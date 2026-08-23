@@ -91,3 +91,40 @@ jobs:
             build.log
             test.log
           if-no-files-found: ignore
+
+  # The runner carries the iOS 26 SDK, so the AlarmKit path — written blind and
+  # gated behind BRAINROT_ALARMKIT — can finally be type-checked. Non-blocking:
+  # the app ships on the notification path regardless of what this says.
+  alarmkit-probe:
+    runs-on: macos-latest
+    timeout-minutes: 25
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build with BRAINROT_ALARMKIT enabled
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project BrainrotAlarm.xcodeproj \
+            -scheme BrainrotAlarm \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS="DEBUG BRAINROT_ALARMKIT" \
+            2>&1 | tee alarmkit.log
+      - name: AlarmKit API report
+        if: always()
+        run: |
+          echo "## AlarmKit type-check against the real SDK" >> "$GITHUB_STEP_SUMMARY"
+          if grep -q "error:" alarmkit.log; then
+            grep -E "error:" alarmkit.log | sed "s|.*/BrainrotAlarm/||" | sort -u \
+              | head -40 | sed "s/^/    /" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "    compiles clean - the AlarmKit path is real" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: alarmkit-log
+          path: alarmkit.log
+          if-no-files-found: ignore

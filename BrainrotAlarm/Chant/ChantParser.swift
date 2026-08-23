@@ -22,7 +22,9 @@ enum ChantParser {
     }
 
     private static func parseWord<S: StringProtocol>(_ word: S) -> [Syllable] {
-        let tokens = word.split(separator: "-").map(String.init)
+        // The literal needs an explicit type: on a generic StringProtocol, Swift
+        // cannot choose between the Character and the Collection overloads of split.
+        let tokens = word.split(separator: "-" as Character).map(String.init)
         var syllables = tokens.compactMap(parseSyllable)
         guard !syllables.isEmpty else { return [] }
 
