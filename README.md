@@ -21,6 +21,10 @@ grid locks for a couple of seconds while the chant keeps going.
         └──────────────────┘
 ```
 
+## Getting it on a phone
+
+See [SIDELOAD.md](SIDELOAD.md) — about 20 minutes on any Mac, with a free Apple ID.
+
 ## Opening it
 
 ```
@@ -177,7 +181,6 @@ The ones worth knowing about:
 ## Known gaps
 
 - Not compiled. See above.
-- No app icon or accent colour asset — Xcode will warn until you add them.
 - The roster is 24 characters; the meme family is larger.
 - Stats are local only, no sync.
 - Notification sounds are written to `Library/Sounds` at ~2.5 MB per scheduled
