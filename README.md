@@ -25,6 +25,12 @@ grid locks for a couple of seconds while the chant keeps going.
 
 Builds and runs its tests on every push against Xcode 26.6 / Swift 6.3.
 
+## Try it without installing anything
+
+The dismissal game also runs as a web page — same synthesiser, same artwork,
+ported to Canvas and Web Audio so the mechanic can be tested on a phone with no
+Apple Developer account. See [`web/`](web/).
+
 ## Getting it on a phone
 
 See [SIDELOAD.md](SIDELOAD.md) — about 20 minutes on any Mac, with a free Apple ID.

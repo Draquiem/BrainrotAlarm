@@ -1,0 +1,2564 @@
+<title>Brainrot Alarm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#0E0B14; --surface:#1A1522; --raised:#241D30; --hairline:rgba(242,239,233,.10);
+  --accent:#FF7A45; --correct:#5CE08A; --wrong:#FF6B6B;
+  --text:#F2EFE9; --muted:rgba(242,239,233,.58); --faint:rgba(242,239,233,.34);
+  --display:"Bricolage Grotesque",system-ui,sans-serif;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ground); color:var(--text); font-family:var(--sans);
+  -webkit-text-size-adjust:100%; line-height:1.5;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.wrap{max-width:560px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:18px}
+
+/* ---------- header ---------- */
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.brand{display:flex;flex-direction:column;gap:2px}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,7vw,36px);margin:0;line-height:1.02;text-wrap:balance;letter-spacing:-.02em}
+.sub{font-size:13px;color:var(--muted);max-width:38ch}
+.tabs{display:flex;gap:4px;background:var(--surface);border-radius:999px;padding:4px;border:1px solid var(--hairline)}
+.tab{appearance:none;border:0;background:transparent;color:var(--muted);font:600 12px/1 var(--sans);
+  padding:8px 12px;border-radius:999px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--accent);color:#17110C}
+.tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---------- stage ---------- */
+.stage{background:var(--surface);border:1px solid var(--hairline);border-radius:20px;padding:18px 16px;
+  display:flex;flex-direction:column;align-items:center;gap:12px}
+#meter{width:100%;height:56px;display:block}
+.prompt{font-family:var(--display);font-weight:700;font-size:20px;text-align:center;margin:0;text-wrap:balance}
+.prompt[data-state="wrong"]{color:var(--wrong)}
+.prompt[data-state="right"]{color:var(--correct)}
+.pips{display:flex;gap:6px;align-items:center}
+.pip{width:12px;height:5px;border-radius:99px;background:rgba(242,239,233,.16);transition:all .3s}
+.pip.done{background:var(--accent)}
+.pip.now{width:24px;background:var(--accent)}
+.controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+button.ghost{appearance:none;border:1px solid var(--hairline);background:var(--raised);color:var(--muted);
+  font:600 12px/1 var(--sans);padding:10px 14px;border-radius:999px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+button.ghost:hover{color:var(--text);border-color:var(--accent)}
+button.ghost:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.ghost[disabled]{opacity:.4;cursor:not-allowed}
+.lock{font-family:var(--mono);font-size:12px;color:var(--wrong);font-variant-numeric:tabular-nums;min-height:1em}
+
+/* ---------- grid ---------- */
+.grid{display:grid;gap:10px}
+.grid[data-cols="2"]{grid-template-columns:repeat(2,1fr)}
+.grid[data-cols="3"]{grid-template-columns:repeat(3,1fr)}
+.tile{appearance:none;padding:0;border:2px solid var(--hairline);background:var(--surface);border-radius:16px;
+  overflow:hidden;cursor:pointer;position:relative;aspect-ratio:1;transition:transform .12s,border-color .2s}
+.tile canvas{width:100%;height:100%;display:block}
+.tile:active{transform:scale(.95)}
+.tile:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.tile.right{border-color:var(--correct)}
+.tile.wrong{border-color:var(--wrong);animation:shake .4s}
+.tile[disabled]{cursor:not-allowed}
+@keyframes shake{10%,90%{transform:translateX(-3px)}30%,70%{transform:translateX(5px)}50%{transform:translateX(-5px)}}
+@media (prefers-reduced-motion:reduce){.tile.wrong{animation:none}*{transition:none!important}}
+
+/* ---------- panels ---------- */
+.panel{background:var(--surface);border:1px solid var(--hairline);border-radius:16px;padding:14px}
+.label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:0 0 10px}
+.segs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.seg{appearance:none;border:1px solid var(--hairline);background:var(--raised);color:var(--muted);
+  font:600 12px/1.2 var(--sans);padding:10px 4px;border-radius:10px;cursor:pointer;text-align:center}
+.seg[aria-pressed="true"]{background:var(--accent);color:#17110C;border-color:var(--accent)}
+.seg:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.blurb{font-size:12px;color:var(--muted);margin:10px 0 0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.stat b{display:block;font-family:var(--display);font-weight:800;font-size:24px;color:var(--accent);font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;color:var(--muted)}
+
+/* ---------- roster ---------- */
+.roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px}
+.card{appearance:none;border:1px solid var(--hairline);background:var(--surface);border-radius:14px;padding:0 0 8px;
+  cursor:pointer;overflow:hidden;text-align:center;color:var(--text)}
+.card canvas{width:100%;aspect-ratio:1;display:block}
+.card b{display:block;font:600 11px/1.25 var(--sans);padding:7px 5px 2px;text-wrap:balance}
+.card small{font-family:var(--mono);font-size:9px;color:var(--faint);font-variant-numeric:tabular-nums}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card.playing{border-color:var(--accent)}
+
+/* ---------- gate ---------- */
+.gate{position:fixed;inset:0;background:var(--ground);display:flex;align-items:center;justify-content:center;
+  padding:24px;z-index:20}
+.gate-inner{max-width:340px;text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center}
+.gate h2{font-family:var(--display);font-weight:800;font-size:30px;margin:0;line-height:1.05;text-wrap:balance}
+.gate p{color:var(--muted);font-size:14px;margin:0}
+.big{appearance:none;border:0;background:var(--accent);color:#17110C;font:700 16px/1 var(--sans);
+  padding:16px 28px;border-radius:14px;cursor:pointer}
+.big:focus-visible{outline:2px solid var(--text);outline-offset:3px}
+.hidden{display:none!important}
+footer{color:var(--faint);font-size:11px;text-align:center;line-height:1.6}
+footer a{color:var(--muted)}
+</style>
+
+<div class="gate" id="gate">
+  <div class="gate-inner">
+    <canvas id="gateArt" width="150" height="150" style="border-radius:22px"></canvas>
+    <h2>Can you pick it out of a line-up?</h2>
+    <p>A nonsense chant plays. One of the creatures is making it. Tap the right one — that's the whole alarm.</p>
+    <button class="big" id="start">Turn the sound on</button>
+    <p style="font-size:12px">Uses sound. Turn your ringer up.</p>
+  </div>
+</div>
+
+<div class="wrap hidden" id="app">
+  <header>
+    <div class="brand">
+      <span class="eyebrow">Test rig</span>
+      <h1>Brainrot Alarm</h1>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tabPlay" aria-selected="true">Play</button>
+      <button class="tab" role="tab" id="tabRoster" aria-selected="false">Roster</button>
+    </div>
+  </header>
+
+  <section id="playView">
+    <div class="stage">
+      <canvas id="meter"></canvas>
+      <p class="prompt" id="prompt">Who is chanting?</p>
+      <div class="pips" id="pips"></div>
+      <div class="controls">
+        <button class="ghost" id="replay">&#8635; Play it again</button>
+        <button class="ghost" id="skip">Skip</button>
+      </div>
+      <div class="lock" id="lock"></div>
+    </div>
+
+    <div class="grid" id="grid" style="margin-top:14px"></div>
+
+    <div class="panel" style="margin-top:14px">
+      <p class="label">Difficulty</p>
+      <div class="segs" id="segs"></div>
+      <p class="blurb" id="blurb"></p>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <p class="label">This session</p>
+      <div class="stats">
+        <div class="stat"><b id="sSolved">0</b><span>solved</span></div>
+        <div class="stat"><b id="sMiss">0</b><span>wrong taps</span></div>
+        <div class="stat"><b id="sClean">&mdash;</b><span>first-try</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="rosterView" class="hidden">
+    <div class="panel" style="margin-bottom:14px">
+      <p class="label">All 24 voices</p>
+      <p class="blurb" style="margin:0">Tap any one to hear its chant. Every sound is generated on the spot &mdash; nothing here is a recording.</p>
+    </div>
+    <div class="roster" id="roster"></div>
+  </section>
+
+  <footer>
+    Same synthesiser and same artwork as the iOS build, ported to run in your browser.<br>
+    <a href="https://github.com/Draquiem/BrainrotAlarm">github.com/Draquiem/BrainrotAlarm</a>
+  </footer>
+</div>
+
+<script>
+// ===== catalogue (generated from BrainrotCatalog.swift) =====
+const CATALOG = [
+ {
+  "id": "tralalero",
+  "name": "Tralalero Tralala",
+  "chant": "Tra-la-le-ro Tra-la-la",
+  "tagline": "Three-legged shark. Wears sneakers. Deeply unserious.",
+  "family": "aquatic",
+  "tier": "starter",
+  "voice": {
+   "fundamental": 128.0,
+   "formantScale": 0.96,
+   "tempo": 3.6,
+   "swing": 0.25,
+   "scale": "major",
+   "melody": [
+    0,
+    2,
+    4,
+    2
+   ],
+   "vibratoRate": 5.0,
+   "vibratoDepth": 0.2,
+   "breathiness": 0.05,
+   "growl": 0.2,
+   "declination": 2.0,
+   "wordGap": 0.13,
+   "brightness": 0.5
+  },
+  "art": {
+   "body": "blob",
+   "head": "wedge",
+   "ears": "fin",
+   "limbs": "fins",
+   "eyes": "beady",
+   "mouth": "fangs",
+   "prop": "sneakers",
+   "pattern": "none",
+   "palette": {
+    "body": 3043289,
+    "bodyShade": 1789086,
+    "accent": 16777215,
+    "backdropTop": 731740,
+    "backdropBottom": 2060210
+   }
+  }
+ },
+ {
+  "id": "bombardiro",
+  "name": "Bombardiro Crocodilo",
+  "chant": "Bom-bar-di-ro Cro-co-di-lo",
+  "tagline": "Crocodile fused to a bomber. Not open to discussion.",
+  "family": "aviator",
+  "tier": "starter",
+  "voice": {
+   "fundamental": 82.0,
+   "formantScale": 0.82,
+   "tempo": 2.9,
+   "swing": 0.15,
+   "scale": "minor",
+   "melody": [
+    0,
+    0,
+    -3,
+    0,
+    2
+   ],
+   "vibratoRate": 4.2,
+   "vibratoDepth": 0.12,
+   "breathiness": 0.04,
+   "growl": 0.55,
+   "declination": 3.0,
+   "wordGap": 0.17,
+   "brightness": 0.3
+  },
+  "art": {
+   "body": "fuselage",
+   "head": "wedge",
+   "ears": "none",
+   "limbs": "wings",
+   "eyes": "shades",
+   "mouth": "fangs",
+   "prop": "bomb",
+   "pattern": "scales",
+   "palette": {
+    "body": 5016379,
+    "bodyShade": 3038244,
+    "accent": 13148746,
+    "backdropTop": 2767394,
+    "backdropBottom": 6056762
+   }
+  }
+ },
+ {
+  "id": "tungtung",
+  "name": "Tung Tung Tung Sahur",
+  "chant": "Tung Tung Tung Sa-hur",
+  "tagline": "A log with a bat. Arrives when you ignore the third call.",
+  "family": "oddity",
+  "tier": "starter",
+  "voice": {
+   "fundamental": 146.0,
+   "formantScale": 0.92,
+   "tempo": 2.2,
+   "swing": 0.0,
+   "scale": "chanterScale",
+   "melody": [
+    0,
+    0,
+    0,
+    1,
+    0
+   ],
+   "vibratoRate": 7.0,
+   "vibratoDepth": 0.1,
+   "breathiness": 0.03,
+   "growl": 0.3,
+   "declination": 1.0,
+   "wordGap": 0.1,
+   "brightness": 0.42
+  },
+  "art": {
+   "body": "log",
+   "head": "merged",
+   "ears": "none",
+   "limbs": "stubby",
+   "eyes": "big",
+   "mouth": "gasp",
+   "prop": "drumstick",
+   "pattern": "none",
+   "palette": {
+    "body": 11893052,
+    "bodyShade": 8015394,
+    "accent": 15784360,
+    "backdropTop": 3811866,
+    "backdropBottom": 8018488
+   }
+  }
+ },
+ {
+  "id": "lirili",
+  "name": "Lirilì Larilà",
+  "chant": "Li-ri-lì La-ri-là",
+  "tagline": "Cactus elephant. Owns a clock. Controls time, allegedly.",
+  "family": "flora",
+  "tier": "starter",
+  "voice": {
+   "fundamental": 174.0,
+   "formantScale": 1.02,
+   "tempo": 3.0,
+   "swing": 0.4,
+   "scale": "whole",
+   "melody": [
+    0,
+    2,
+    1,
+    3,
+    2,
+    5
+   ],
+   "vibratoRate": 3.4,
+   "vibratoDepth": 0.42,
+   "breathiness": 0.16,
+   "growl": 0.12,
+   "declination": 0.5,
+   "wordGap": 0.16,
+   "brightness": 0.6
+  },
+  "art": {
+   "body": "tall",
+   "head": "snout",
+   "ears": "floppy",
+   "limbs": "stubby",
+   "eyes": "sleepy",
+   "mouth": "flat",
+   "prop": "clock",
+   "pattern": "stripes",
+   "palette": {
+    "body": 7317583,
+    "bodyShade": 4879668,
+    "accent": 15254874,
+    "backdropTop": 3099178,
+    "backdropBottom": 9420650
+   }
+  }
+ },
+ {
+  "id": "patapim",
+  "name": "Brr Brr Patapim",
+  "chant": "Brr Brr Pa-ta-pim",
+  "tagline": "Half monkey, half shrubbery, entirely nose.",
+  "family": "primate",
+  "tier": "starter",
+  "voice": {
+   "fundamental": 110.0,
+   "formantScale": 0.96,
+   "tempo": 4.0,
+   "swing": 0.25,
+   "scale": "major",
+   "melody": [
+    0,
+    0,
+    2,
+    4,
+    1
+   ],
+   "vibratoRate": 5.0,
+   "vibratoDepth": 0.2,
+   "breathiness": 0.05,
+   "growl": 0.4,
+   "declination": 2.0,
+   "wordGap": 0.13,
+   "brightness": 0.5
+  },
+  "art": {
+   "body": "pear",
+   "head": "snout",
+   "ears": "leaf",
+   "limbs": "long",
+   "eyes": "big",
+   "mouth": "smile",
+   "prop": "none",
+   "pattern": "spots",
+   "palette": {
+    "body": 9136970,
+    "bodyShade": 6047280,
+    "accent": 8372058,
+    "backdropTop": 3813408,
+    "backdropBottom": 7035450
+   }
+  }
+ },
+ {
+  "id": "chimpanzini",
+  "name": "Chimpanzini Bananini",
+  "chant": "Chim-pan-zi-ni Ba-na-ni-ni",
+  "tagline": "Monkey wearing a banana as a body. Structurally sound.",
+  "family": "primate",
+  "tier": "starter",
+  "voice": {
+   "fundamental": 268.0,
+   "formantScale": 1.28,
+   "tempo": 5.0,
+   "swing": 0.35,
+   "scale": "penta",
+   "melody": [
+    0,
+    3,
+    2,
+    4,
+    2
+   ],
+   "vibratoRate": 6.4,
+   "vibratoDepth": 0.3,
+   "breathiness": 0.1,
+   "growl": 0.08,
+   "declination": 1.4,
+   "wordGap": 0.1,
+   "brightness": 0.8
+  },
+  "art": {
+   "body": "fruit",
+   "head": "snout",
+   "ears": "round",
+   "limbs": "stubby",
+   "eyes": "big",
+   "mouth": "grin",
+   "prop": "banana",
+   "pattern": "none",
+   "palette": {
+    "body": 15910461,
+    "bodyShade": 13081122,
+    "accent": 7031338,
+    "backdropTop": 7035408,
+    "backdropBottom": 15914090
+   }
+  }
+ },
+ {
+  "id": "ballerina",
+  "name": "Ballerina Cappuccina",
+  "chant": "Bal-le-ri-na Cap-puc-ci-na",
+  "tagline": "Prima ballerina. Head is a cappuccino. No notes.",
+  "family": "confection",
+  "tier": "starter",
+  "voice": {
+   "fundamental": 232.0,
+   "formantScale": 1.1,
+   "tempo": 2.5,
+   "swing": 0.05,
+   "scale": "major",
+   "melody": [
+    4,
+    2,
+    0,
+    2,
+    4,
+    7
+   ],
+   "vibratoRate": 5.6,
+   "vibratoDepth": 0.55,
+   "breathiness": 0.09,
+   "growl": 0.05,
+   "declination": 2.6,
+   "wordGap": 0.2,
+   "brightness": 0.68
+  },
+  "art": {
+   "body": "cup",
+   "head": "round",
+   "ears": "none",
+   "limbs": "long",
+   "eyes": "sleepy",
+   "mouth": "smile",
+   "prop": "tutu",
+   "pattern": "none",
+   "palette": {
+    "body": 15259063,
+    "bodyShade": 12888194,
+    "accent": 14703242,
+    "backdropTop": 8010330,
+    "backdropBottom": 14723268
+   }
+  }
+ },
+ {
+  "id": "cappuccino",
+  "name": "Cappuccino Assassino",
+  "chant": "Cap-puc-ci-no As-sas-si-no",
+  "tagline": "Espresso with two blades and unresolved business.",
+  "family": "confection",
+  "tier": "starter",
+  "voice": {
+   "fundamental": 132.0,
+   "formantScale": 0.92,
+   "tempo": 4.6,
+   "swing": 0.0,
+   "scale": "chanterScale",
+   "melody": [
+    0,
+    1,
+    0,
+    -1
+   ],
+   "vibratoRate": 7.0,
+   "vibratoDepth": 0.1,
+   "breathiness": 0.03,
+   "growl": 0.42,
+   "declination": 1.0,
+   "wordGap": 0.1,
+   "brightness": 0.42
+  },
+  "art": {
+   "body": "cup",
+   "head": "merged",
+   "ears": "none",
+   "limbs": "stubby",
+   "eyes": "shades",
+   "mouth": "flat",
+   "prop": "blade",
+   "pattern": "none",
+   "palette": {
+    "body": 4861984,
+    "bodyShade": 3021842,
+    "accent": 14240314,
+    "backdropTop": 1708050,
+    "backdropBottom": 6044202
+   }
+  }
+ },
+ {
+  "id": "trippi",
+  "name": "Trippi Troppi",
+  "chant": "Trip-pi Trop-pi",
+  "tagline": "Cat wearing a shrimp. Or shrimp wearing a cat.",
+  "family": "aquatic",
+  "tier": "core",
+  "voice": {
+   "fundamental": 300.0,
+   "formantScale": 1.28,
+   "tempo": 4.0,
+   "swing": 0.5,
+   "scale": "penta",
+   "melody": [
+    4,
+    0,
+    5,
+    2
+   ],
+   "vibratoRate": 6.4,
+   "vibratoDepth": 0.3,
+   "breathiness": 0.1,
+   "growl": 0.08,
+   "declination": 1.4,
+   "wordGap": 0.1,
+   "brightness": 0.8
+  },
+  "art": {
+   "body": "wide",
+   "head": "round",
+   "ears": "pointy",
+   "limbs": "stubby",
+   "eyes": "googly",
+   "mouth": "grin",
+   "prop": "none",
+   "pattern": "stripes",
+   "palette": {
+    "body": 15891034,
+    "bodyShade": 12866106,
+    "accent": 16769232,
+    "backdropTop": 6040106,
+    "backdropBottom": 15902858
+   }
+  }
+ },
+ {
+  "id": "bobritto",
+  "name": "Bobritto Bandito",
+  "chant": "Bo-brit-to Ban-di-to",
+  "tagline": "Beaver. Pinstripes. Cigar. Runs the canal district.",
+  "family": "oddity",
+  "tier": "core",
+  "voice": {
+   "fundamental": 96.0,
+   "formantScale": 0.82,
+   "tempo": 3.3,
+   "swing": 0.15,
+   "scale": "minor",
+   "melody": [
+    0,
+    -2,
+    0,
+    3
+   ],
+   "vibratoRate": 4.2,
+   "vibratoDepth": 0.12,
+   "breathiness": 0.04,
+   "growl": 0.6,
+   "declination": 3.0,
+   "wordGap": 0.17,
+   "brightness": 0.3
+  },
+  "art": {
+   "body": "pear",
+   "head": "snout",
+   "ears": "round",
+   "limbs": "stubby",
+   "eyes": "shades",
+   "mouth": "fangs",
+   "prop": "cigar",
+   "pattern": "none",
+   "palette": {
+    "body": 8018490,
+    "bodyShade": 5126692,
+    "accent": 14271626,
+    "backdropTop": 2760728,
+    "backdropBottom": 6048308
+   }
+  }
+ },
+ {
+  "id": "frigo",
+  "name": "Frigo Camelo",
+  "chant": "Fri-go Ca-me-lo",
+  "tagline": "Camel that is also a refrigerator. Stays cool.",
+  "family": "oddity",
+  "tier": "core",
+  "voice": {
+   "fundamental": 118.0,
+   "formantScale": 0.96,
+   "tempo": 2.8,
+   "swing": 0.25,
+   "scale": "major",
+   "melody": [
+    2,
+    0,
+    -1,
+    0
+   ],
+   "vibratoRate": 5.0,
+   "vibratoDepth": 0.2,
+   "breathiness": 0.3,
+   "growl": 0.2,
+   "declination": 2.0,
+   "wordGap": 0.13,
+   "brightness": 0.5
+  },
+  "art": {
+   "body": "wide",
+   "head": "snout",
+   "ears": "round",
+   "limbs": "long",
+   "eyes": "sleepy",
+   "mouth": "flat",
+   "prop": "fridge",
+   "pattern": "none",
+   "palette": {
+    "body": 14267514,
+    "bodyShade": 11044686,
+    "accent": 12114400,
+    "backdropTop": 4864552,
+    "backdropBottom": 12888186
+   }
+  }
+ },
+ {
+  "id": "boneca",
+  "name": "Boneca Ambalabu",
+  "chant": "Bo-ne-ca Am-ba-la-bu",
+  "tagline": "Frog head, tyre torso, human legs. Sleep well.",
+  "family": "reptile",
+  "tier": "core",
+  "voice": {
+   "fundamental": 150.0,
+   "formantScale": 1.02,
+   "tempo": 3.6,
+   "swing": 0.4,
+   "scale": "whole",
+   "melody": [
+    0,
+    4,
+    2,
+    6,
+    3
+   ],
+   "vibratoRate": 3.4,
+   "vibratoDepth": 0.42,
+   "breathiness": 0.16,
+   "growl": 0.12,
+   "declination": 0.5,
+   "wordGap": 0.16,
+   "brightness": 0.6
+  },
+  "art": {
+   "body": "blob",
+   "head": "round",
+   "ears": "none",
+   "limbs": "long",
+   "eyes": "googly",
+   "mouth": "grin",
+   "prop": "tyre",
+   "pattern": "none",
+   "palette": {
+    "body": 5941322,
+    "bodyShade": 3831088,
+    "accent": 2763310,
+    "backdropTop": 1714714,
+    "backdropBottom": 4880954
+   }
+  }
+ },
+ {
+  "id": "vaca",
+  "name": "La Vaca Saturno Saturnita",
+  "chant": "La Va-ca Sa-tur-no Sa-tur-ni-ta",
+  "tagline": "Dairy cow with a planetary ring. Astronomically loud.",
+  "family": "bovine",
+  "tier": "core",
+  "voice": {
+   "fundamental": 196.0,
+   "formantScale": 1.1,
+   "tempo": 3.9,
+   "swing": 0.05,
+   "scale": "major",
+   "melody": [
+    0,
+    2,
+    4,
+    7,
+    4,
+    2
+   ],
+   "vibratoRate": 5.6,
+   "vibratoDepth": 0.55,
+   "breathiness": 0.09,
+   "growl": 0.05,
+   "declination": 2.6,
+   "wordGap": 0.2,
+   "brightness": 0.68
+  },
+  "art": {
+   "body": "wide",
+   "head": "snout",
+   "ears": "horns",
+   "limbs": "hooves",
+   "eyes": "big",
+   "mouth": "smile",
+   "prop": "planetRing",
+   "pattern": "spots",
+   "palette": {
+    "body": 15789542,
+    "bodyShade": 12893874,
+    "accent": 14723162,
+    "backdropTop": 2763338,
+    "backdropBottom": 6974120
+   }
+  }
+ },
+ {
+  "id": "glorbo",
+  "name": "Glorbo Fruttodrillo",
+  "chant": "Glor-bo Frut-to-dril-lo",
+  "tagline": "Crocodile with a watermelon situation.",
+  "family": "reptile",
+  "tier": "core",
+  "voice": {
+   "fundamental": 88.0,
+   "formantScale": 0.82,
+   "tempo": 3.4,
+   "swing": 0.15,
+   "scale": "minor",
+   "melody": [
+    0,
+    3,
+    0,
+    -2,
+    0
+   ],
+   "vibratoRate": 4.2,
+   "vibratoDepth": 0.12,
+   "breathiness": 0.04,
+   "growl": 0.55,
+   "declination": 3.0,
+   "wordGap": 0.17,
+   "brightness": 0.3
+  },
+  "art": {
+   "body": "blob",
+   "head": "wedge",
+   "ears": "none",
+   "limbs": "stubby",
+   "eyes": "beady",
+   "mouth": "fangs",
+   "prop": "melon",
+   "pattern": "stripes",
+   "palette": {
+    "body": 4889146,
+    "bodyShade": 3042084,
+    "accent": 14703194,
+    "backdropTop": 1718810,
+    "backdropBottom": 4885050
+   }
+  }
+ },
+ {
+  "id": "bombombini",
+  "name": "Bombombini Gusini",
+  "chant": "Bom-bom-bi-ni Gu-si-ni",
+  "tagline": "Goose airframe. Ordnance included.",
+  "family": "aviator",
+  "tier": "core",
+  "voice": {
+   "fundamental": 104.0,
+   "formantScale": 0.82,
+   "tempo": 4.4,
+   "swing": 0.15,
+   "scale": "minor",
+   "melody": [
+    0,
+    0,
+    2,
+    3,
+    5
+   ],
+   "vibratoRate": 4.2,
+   "vibratoDepth": 0.12,
+   "breathiness": 0.04,
+   "growl": 0.35,
+   "declination": 3.0,
+   "wordGap": 0.17,
+   "brightness": 0.3
+  },
+  "art": {
+   "body": "fuselage",
+   "head": "beak",
+   "ears": "none",
+   "limbs": "wings",
+   "eyes": "beady",
+   "mouth": "beak",
+   "prop": "bomb",
+   "pattern": "none",
+   "palette": {
+    "body": 15921384,
+    "bodyShade": 12894388,
+    "accent": 14721056,
+    "backdropTop": 3820124,
+    "backdropBottom": 9087172
+   }
+  }
+ },
+ {
+  "id": "trulimero",
+  "name": "Trulimero Trulicina",
+  "chant": "Tru-li-me-ro Tru-li-ci-na",
+  "tagline": "Fish body, cat head, and three human legs.",
+  "family": "aquatic",
+  "tier": "core",
+  "voice": {
+   "fundamental": 160.0,
+   "formantScale": 0.96,
+   "tempo": 4.2,
+   "swing": 0.4,
+   "scale": "major",
+   "melody": [
+    2,
+    4,
+    5,
+    4,
+    2,
+    0
+   ],
+   "vibratoRate": 5.0,
+   "vibratoDepth": 0.2,
+   "breathiness": 0.05,
+   "growl": 0.2,
+   "declination": 2.0,
+   "wordGap": 0.13,
+   "brightness": 0.5
+  },
+  "art": {
+   "body": "wide",
+   "head": "round",
+   "ears": "pointy",
+   "limbs": "long",
+   "eyes": "big",
+   "mouth": "grin",
+   "prop": "none",
+   "pattern": "scales",
+   "palette": {
+    "body": 3844256,
+    "bodyShade": 2389358,
+    "accent": 15914090,
+    "backdropTop": 1718842,
+    "backdropBottom": 3836554
+   }
+  }
+ },
+ {
+  "id": "girafa",
+  "name": "Girafa Celeste",
+  "chant": "Gi-ra-fa Ce-le-ste",
+  "tagline": "Giraffe of the heavens. Neck reaches low orbit.",
+  "family": "oddity",
+  "tier": "deep",
+  "voice": {
+   "fundamental": 210.0,
+   "formantScale": 1.1,
+   "tempo": 2.6,
+   "swing": 0.05,
+   "scale": "major",
+   "melody": [
+    7,
+    4,
+    2,
+    0
+   ],
+   "vibratoRate": 5.6,
+   "vibratoDepth": 0.7,
+   "breathiness": 0.09,
+   "growl": 0.05,
+   "declination": 2.6,
+   "wordGap": 0.2,
+   "brightness": 0.68
+  },
+  "art": {
+   "body": "tall",
+   "head": "snout",
+   "ears": "antennae",
+   "limbs": "long",
+   "eyes": "sleepy",
+   "mouth": "smile",
+   "prop": "sparkles",
+   "pattern": "spots",
+   "palette": {
+    "body": 9071300,
+    "bodyShade": 6046352,
+    "accent": 15917194,
+    "backdropTop": 1708080,
+    "backdropBottom": 5913242
+   }
+  }
+ },
+ {
+  "id": "orangutini",
+  "name": "Orangutini Ananassini",
+  "chant": "O-ran-gu-ti-ni A-na-nas-si-ni",
+  "tagline": "Orangutan issued a pineapple. Wears it well.",
+  "family": "primate",
+  "tier": "deep",
+  "voice": {
+   "fundamental": 240.0,
+   "formantScale": 1.28,
+   "tempo": 5.4,
+   "swing": 0.35,
+   "scale": "penta",
+   "melody": [
+    0,
+    2,
+    3,
+    5,
+    7,
+    5
+   ],
+   "vibratoRate": 6.4,
+   "vibratoDepth": 0.3,
+   "breathiness": 0.1,
+   "growl": 0.08,
+   "declination": 1.4,
+   "wordGap": 0.1,
+   "brightness": 0.8
+  },
+  "art": {
+   "body": "fruit",
+   "head": "snout",
+   "ears": "round",
+   "limbs": "long",
+   "eyes": "big",
+   "mouth": "gasp",
+   "prop": "pineapple",
+   "pattern": "checker",
+   "palette": {
+    "body": 14715434,
+    "bodyShade": 11560218,
+    "accent": 8044362,
+    "backdropTop": 6044176,
+    "backdropBottom": 14723146
+   }
+  }
+ },
+ {
+  "id": "burbaloni",
+  "name": "Burbaloni Luliloli",
+  "chant": "Bur-ba-lo-ni Lu-li-lo-li",
+  "tagline": "A coconut. There is a capybara inside. Do not ask.",
+  "family": "flora",
+  "tier": "deep",
+  "voice": {
+   "fundamental": 142.0,
+   "formantScale": 0.96,
+   "tempo": 3.9,
+   "swing": 0.55,
+   "scale": "major",
+   "melody": [
+    0,
+    4,
+    0,
+    4,
+    2
+   ],
+   "vibratoRate": 5.0,
+   "vibratoDepth": 0.2,
+   "breathiness": 0.05,
+   "growl": 0.2,
+   "declination": 2.0,
+   "wordGap": 0.13,
+   "brightness": 0.5
+  },
+  "art": {
+   "body": "fruit",
+   "head": "merged",
+   "ears": "round",
+   "limbs": "stubby",
+   "eyes": "sleepy",
+   "mouth": "flat",
+   "prop": "coconut",
+   "pattern": "none",
+   "palette": {
+    "body": 7031338,
+    "bodyShade": 4599834,
+    "accent": 15920608,
+    "backdropTop": 2771514,
+    "backdropBottom": 6986362
+   }
+  }
+ },
+ {
+  "id": "blueberrini",
+  "name": "Blueberrini Octopusini",
+  "chant": "Blu-ber-ri-ni Oc-to-pu-si-ni",
+  "tagline": "Octopus made of blueberry. Eight opinions.",
+  "family": "aquatic",
+  "tier": "deep",
+  "voice": {
+   "fundamental": 284.0,
+   "formantScale": 1.28,
+   "tempo": 4.8,
+   "swing": 0.35,
+   "scale": "penta",
+   "melody": [
+    5,
+    3,
+    2,
+    0,
+    2
+   ],
+   "vibratoRate": 6.4,
+   "vibratoDepth": 0.3,
+   "breathiness": 0.1,
+   "growl": 0.08,
+   "declination": 1.4,
+   "wordGap": 0.1,
+   "brightness": 0.8
+  },
+  "art": {
+   "body": "blob",
+   "head": "merged",
+   "ears": "none",
+   "limbs": "tentacles",
+   "eyes": "big",
+   "mouth": "gasp",
+   "prop": "berry",
+   "pattern": "none",
+   "palette": {
+    "body": 5921476,
+    "bodyShade": 3816080,
+    "accent": 9101520,
+    "backdropTop": 1710666,
+    "backdropBottom": 4868776
+   }
+  }
+ },
+ {
+  "id": "trictrac",
+  "name": "Tric Trac Baraboom",
+  "chant": "Tric Trac Ba-ra-boom",
+  "tagline": "Football. Grenade. The distinction has collapsed.",
+  "family": "oddity",
+  "tier": "deep",
+  "voice": {
+   "fundamental": 120.0,
+   "formantScale": 0.92,
+   "tempo": 3.2,
+   "swing": 0.0,
+   "scale": "chanterScale",
+   "melody": [
+    0,
+    0,
+    -2,
+    -2,
+    0
+   ],
+   "vibratoRate": 7.0,
+   "vibratoDepth": 0.1,
+   "breathiness": 0.03,
+   "growl": 0.5,
+   "declination": 1.0,
+   "wordGap": 0.1,
+   "brightness": 0.42
+  },
+  "art": {
+   "body": "blob",
+   "head": "merged",
+   "ears": "none",
+   "limbs": "stubby",
+   "eyes": "beady",
+   "mouth": "flat",
+   "prop": "ball",
+   "pattern": "checker",
+   "palette": {
+    "body": 4872762,
+    "bodyShade": 3029540,
+    "accent": 14737632,
+    "backdropTop": 1712152,
+    "backdropBottom": 4872762
+   }
+  }
+ },
+ {
+  "id": "zibra",
+  "name": "Zibra Zubra Zibralini",
+  "chant": "Zi-bra Zu-bra Zi-bra-li-ni",
+  "tagline": "Zebra, twice over, then once more for luck.",
+  "family": "bovine",
+  "tier": "deep",
+  "voice": {
+   "fundamental": 165.0,
+   "formantScale": 1.02,
+   "tempo": 4.5,
+   "swing": 0.4,
+   "scale": "whole",
+   "melody": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "vibratoRate": 3.4,
+   "vibratoDepth": 0.42,
+   "breathiness": 0.16,
+   "growl": 0.12,
+   "declination": 0.5,
+   "wordGap": 0.16,
+   "brightness": 0.6
+  },
+  "art": {
+   "body": "wide",
+   "head": "snout",
+   "ears": "pointy",
+   "limbs": "hooves",
+   "eyes": "big",
+   "mouth": "smile",
+   "prop": "none",
+   "pattern": "stripes",
+   "palette": {
+    "body": 15790320,
+    "bodyShade": 2763306,
+    "accent": 14721114,
+    "backdropTop": 2763322,
+    "backdropBottom": 8026762
+   }
+  }
+ },
+ {
+  "id": "piccione",
+  "name": "Piccione Macchina",
+  "chant": "Pic-cio-ne Mac-chi-na",
+  "tagline": "Pigeon, but a car. Parks anywhere.",
+  "family": "aviator",
+  "tier": "deep",
+  "voice": {
+   "fundamental": 155.0,
+   "formantScale": 0.92,
+   "tempo": 3.5,
+   "swing": 0.0,
+   "scale": "chanterScale",
+   "melody": [
+    0,
+    2,
+    0,
+    2
+   ],
+   "vibratoRate": 7.0,
+   "vibratoDepth": 0.1,
+   "breathiness": 0.03,
+   "growl": 0.3,
+   "declination": 1.0,
+   "wordGap": 0.1,
+   "brightness": 0.75
+  },
+  "art": {
+   "body": "fuselage",
+   "head": "beak",
+   "ears": "none",
+   "limbs": "stubby",
+   "eyes": "beady",
+   "mouth": "beak",
+   "prop": "tyre",
+   "pattern": "none",
+   "palette": {
+    "body": 8030888,
+    "bodyShade": 5134965,
+    "accent": 14703178,
+    "backdropTop": 2764864,
+    "backdropBottom": 6978202
+   }
+  }
+ },
+ {
+  "id": "svinino",
+  "name": "Svinino Bombondino",
+  "chant": "Svi-ni-no Bom-bon-di-no",
+  "tagline": "Pig with wings and a payload. Cleared for takeoff.",
+  "family": "aviator",
+  "tier": "deep",
+  "voice": {
+   "fundamental": 92.0,
+   "formantScale": 0.82,
+   "tempo": 3.7,
+   "swing": 0.15,
+   "scale": "minor",
+   "melody": [
+    0,
+    2,
+    0,
+    -3,
+    0
+   ],
+   "vibratoRate": 4.2,
+   "vibratoDepth": 0.12,
+   "breathiness": 0.25,
+   "growl": 0.55,
+   "declination": 3.0,
+   "wordGap": 0.17,
+   "brightness": 0.3
+  },
+  "art": {
+   "body": "fuselage",
+   "head": "snout",
+   "ears": "floppy",
+   "limbs": "wings",
+   "eyes": "beady",
+   "mouth": "smile",
+   "prop": "bomb",
+   "pattern": "none",
+   "palette": {
+    "body": 15900848,
+    "bodyShade": 12874373,
+    "accent": 5925706,
+    "backdropTop": 4860469,
+    "backdropBottom": 12874384
+   }
+  }
+ }
+];
+
+// ===== chant synthesiser (port of ChantSynth.swift) =====
+// Chant synthesiser — JS port of ChantSynth.swift.
+// Ported from Tools/synth_port.py, which is itself a verified mirror of the Swift.
+// The only deliberate divergence is the noise PRNG (mulberry32 here rather than
+// xorshift64*, because JS lacks cheap 64-bit ints); noise is perceptually a wash.
+
+const SR = 44100, BLOCK = 32;
+const SOURCE_MAKEUP = 13.0, TILT2 = 0.6, TILT3 = 0.5;
+const G2_BASE = 0.30, G2_BRIGHT = 0.35, G3_BASE = 0.10, G3_BRIGHT = 0.30;
+const BURST_LEVEL = 0.55, FRICATIVE_LEVEL = 0.62, VOICE_BAR = 0.10;
+const VOICED_BUS = 1.0, NOISE_BUS = 0.5;
+
+const VOWEL_FORMANTS = { a:[730,1090,2440], e:[530,1840,2480], i:[270,2290,3010],
+                         o:[570,840,2410],  u:[300,870,2240] };
+const VOWEL_BW = [70, 100, 150];
+const VOWEL_OPEN = { a:1.0, e:0.85, o:0.85, i:0.7, u:0.7 };
+const PLACE_BURST = { labial:[900,1.2], dental:[3800,2.4], velar:[1900,3.0] };
+const LATERAL=[350,1100,2600], RHOTIC=[400,1250,1700], NASAL=[260,1000,2250], NEUTRAL=[500,1400,2450];
+const STOP_LOCUS = { labial:750, dental:1800, velar:2400 };
+
+const SCALES = {
+  major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10],
+  penta:[0,3,5,7,10],     whole:[0,2,4,6,8,10]
+};
+
+// ---------------------------------------------------------------- parser ---
+const ACCENTS = 'àáâäèéêëìíîïòóôöùúûü';
+const PLAIN   = 'aaaaeeeeiiiioooouuuu';
+const VOWELS = { a:'a', e:'e', i:'i', o:'o', u:'u', y:'i' };
+
+function fold(s) {
+  let out = '';
+  for (const ch of s.toLowerCase()) {
+    const i = ACCENTS.indexOf(ch);
+    const c = i >= 0 ? PLAIN[i] : ch;
+    if (c >= 'a' && c <= 'z') out += c;
+  }
+  return out;
+}
+const isFront = c => c === 'e' || c === 'i';
+
+function onsetFor(cluster, following) {
+  if (!cluster) return ['none'];
+  if (cluster.length >= 2) {
+    const pair = cluster.slice(0, 2);
+    if (pair === 'gn') return ['nasal'];
+    if (pair === 'gl') return ['liquid', false];
+    if (pair === 'ch' || pair === 'gh') return ['plosive', 'velar', pair === 'gh'];
+    if (pair === 'sc' && isFront(following)) return ['fricative', 'dental', false];
+  }
+  const f = cluster[0];
+  if (f === 'c') return isFront(following) ? ['fricative','dental',false] : ['plosive','velar',false];
+  if (f === 'g') return isFront(following) ? ['fricative','dental',true]  : ['plosive','velar',true];
+  const table = {
+    p:['plosive','labial',false], b:['plosive','labial',true],
+    t:['plosive','dental',false], d:['plosive','dental',true],
+    k:['plosive','velar',false],  q:['plosive','velar',false],
+    f:['fricative','labial',false], v:['fricative','labial',true],
+    s:['fricative','dental',false], z:['fricative','dental',true],
+    m:['nasal'], n:['nasal'], l:['liquid',false], r:['liquid',true],
+    j:['liquid',false], w:['liquid',false], y:['liquid',false], h:['none']
+  };
+  return table[f] || ['none'];
+}
+
+function parseSyllable(raw) {
+  let forced = false, body = raw;
+  if (body[0] === "'" || body[0] === '’') { forced = true; body = body.slice(1); }
+  const accented = [...body.toLowerCase()].some(c => ACCENTS.includes(c));
+  const letters = fold(body);
+  if (!letters) return null;
+
+  let vi = -1;
+  for (let i = 0; i < letters.length; i++) if (VOWELS[letters[i]]) { vi = i; break; }
+  if (vi < 0) return { onset:['trill'], vowel:'u', coda:true, stressed:true, liquidRelease:false, text:raw };
+
+  const cluster = letters.slice(0, vi);
+  const vowel = VOWELS[letters[vi]];
+  let ti = vi + 1;
+  while (ti < letters.length && VOWELS[letters[ti]]) ti++;
+  return {
+    onset: onsetFor(cluster, letters[vi]),
+    vowel,
+    coda: ti < letters.length,
+    stressed: forced || accented,
+    liquidRelease: cluster.length > 1 && (cluster.endsWith('l') || cluster.endsWith('r')),
+    text: raw
+  };
+}
+
+function parseChant(chant) {
+  const words = [];
+  for (const w of chant.split(/[  ]+/)) {
+    if (!w) continue;
+    const sylls = w.split('-').map(parseSyllable).filter(Boolean);
+    if (!sylls.length) continue;
+    if (!sylls.some(s => s.stressed)) sylls[sylls.length >= 2 ? sylls.length - 2 : 0].stressed = true;
+    words.push(sylls);
+  }
+  return words;
+}
+
+function lengthFactor(s) {
+  let f = 1.0;
+  if (s.stressed) f *= 1.35;
+  if (s.coda) f *= 0.8;
+  if (s.onset[0] === 'trill') f *= 1.2;
+  return f;
+}
+
+// ---------------------------------------------------------------- biquad ---
+class Biquad {
+  constructor(sr) { this.sr = sr; this.b0=1; this.b1=0; this.b2=0; this.a1=0; this.a2=0;
+                    this.x1=0; this.x2=0; this.y1=0; this.y2=0; }
+  clamp(hz) { return Math.min(Math.max(20, hz), this.sr * 0.45); }
+  bandpass(center, bw) {
+    const f = this.clamp(center), q = Math.max(0.35, f / Math.max(20, bw));
+    const w0 = 2 * Math.PI * f / this.sr, alpha = Math.sin(w0) / (2 * q), a0 = 1 + alpha;
+    this.b0 = alpha / a0; this.b1 = 0; this.b2 = -alpha / a0;
+    this.a1 = (-2 * Math.cos(w0)) / a0; this.a2 = (1 - alpha) / a0;
+  }
+  lowpass(cut, q = 0.707) {
+    const f = this.clamp(cut), w0 = 2 * Math.PI * f / this.sr;
+    const alpha = Math.sin(w0) / (2 * Math.max(0.1, q)), cw = Math.cos(w0), a0 = 1 + alpha;
+    this.b0 = ((1 - cw) / 2) / a0; this.b1 = (1 - cw) / a0; this.b2 = this.b0;
+    this.a1 = (-2 * cw) / a0; this.a2 = (1 - alpha) / a0;
+  }
+  highpass(cut, q = 0.707) {
+    const f = this.clamp(cut), w0 = 2 * Math.PI * f / this.sr;
+    const alpha = Math.sin(w0) / (2 * Math.max(0.1, q)), cw = Math.cos(w0), a0 = 1 + alpha;
+    this.b0 = ((1 + cw) / 2) / a0; this.b1 = -(1 + cw) / a0; this.b2 = this.b0;
+    this.a1 = (-2 * cw) / a0; this.a2 = (1 - alpha) / a0;
+  }
+  process(x) {
+    const y = this.b0*x + this.b1*this.x1 + this.b2*this.x2 - this.a1*this.y1 - this.a2*this.y2;
+    this.x2 = this.x1; this.x1 = x; this.y2 = this.y1; this.y1 = y;
+    return y;
+  }
+}
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return (((t ^ (t >>> 14)) >>> 0) / 4294967296) * 2 - 1;
+  };
+}
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const smoothstep = t => { const x = Math.min(1, Math.max(0, t)); return x * x * (3 - 2 * x); };
+const scaled = (sh, k) => [sh[0]*k, sh[1]*k, sh[2]*k];
+
+// ----------------------------------------------------------------- voice ---
+function voice(o = {}) {
+  return Object.assign({
+    fundamental:138, formantScale:1.0, tempo:3.4, swing:0,
+    scale:SCALES.major, melody:[0,2,4,2], vibratoRate:5.2, vibratoDepth:0.18,
+    breathiness:0.06, growl:0.15, declination:2.0, wordGap:0.13, brightness:0.5
+  }, o);
+}
+function semitoneDegree(v, d) {
+  const n = v.scale.length, oct = Math.floor(d / n), idx = d - oct * n;
+  return v.scale[idx] + 12 * oct;
+}
+function semitoneAt(v, i) {
+  const m = v.melody;
+  return semitoneDegree(v, m[((i % m.length) + m.length) % m.length]);
+}
+
+// ----------------------------------------------------------------- synth ---
+function segmentDurations(syl, d) {
+  const table = { none:Math.min(0.010,d*0.1), plosive:Math.min(0.062,d*0.32),
+                  fricative:Math.min(0.085,d*0.40), nasal:Math.min(0.070,d*0.33),
+                  liquid:Math.min(0.055,d*0.28), trill:d*0.85 };
+  let onset = table[syl.onset[0]];
+  let coda = syl.coda ? Math.min(0.058, d * 0.24) : 0;
+  const cap = d * 0.75;
+  if (onset + coda > cap) { const k = cap / (onset + coda); return [onset*k, coda*k]; }
+  return [onset, coda];
+}
+
+function layout(words, v) {
+  const total = Math.max(1, words.reduce((n, w) => n + w.length, 0));
+  const notes = []; let t = 0, idx = 0;
+  const base = 1.0 / Math.max(0.5, v.tempo);
+  words.forEach((word, wi) => {
+    word.forEach((syl, pos) => {
+      const swing = idx % 2 === 0 ? 1 + v.swing * 0.3 : 1 - v.swing * 0.3;
+      const dur = base * lengthFactor(syl) * swing;
+      notes.push({ syl, start:t, dur, index:idx, wordFinal:pos === word.length - 1, progress:idx / total });
+      t += dur; idx++;
+    });
+    if (wi < words.length - 1) t += v.wordGap;
+  });
+  return notes;
+}
+
+function render(chant, v, seed = 0x5EED) {
+  const words = parseChant(chant);
+  if (!words.length) return new Float32Array(0);
+  const notes = layout(words, v);
+  const last = notes[notes.length - 1];
+  const n = Math.max(1, Math.floor((last.start + last.dur + 0.06) * SR));
+
+  // ---- control track ----
+  const nblocks = Math.floor(n / BLOCK) + 2;
+  const F = {
+    f0:new Float64Array(nblocks).fill(110), amp:new Float64Array(nblocks),
+    voiced:new Float64Array(nblocks), noise:new Float64Array(nblocks),
+    f1:new Float64Array(nblocks).fill(500), f2:new Float64Array(nblocks).fill(1500),
+    f3:new Float64Array(nblocks).fill(2500), b1:new Float64Array(nblocks).fill(80),
+    b2:new Float64Array(nblocks).fill(110), b3:new Float64Array(nblocks).fill(170),
+    nHz:new Float64Array(nblocks).fill(2000), nQ:new Float64Array(nblocks).fill(2),
+    trill:new Float64Array(nblocks)
+  };
+  const fscale = Math.max(0.5, v.formantScale);
+  const f3lift = 0.9 + 0.3 * v.brightness;
+  let carry = 0;
+
+  for (const note of notes) {
+    const syl = note.syl, d = note.dur;
+    const [onsetDur, codaDur] = segmentDurations(syl, d);
+    const bodyDur = Math.max(0.02, d - onsetDur - codaDur);
+    const vf = VOWEL_FORMANTS[syl.vowel];
+    const vowel = [vf[0]*fscale, vf[1]*fscale, vf[2]*fscale*f3lift];
+    const o = syl.onset;
+    let entry;
+    if (o[0] === 'liquid') entry = scaled(o[1] ? RHOTIC : LATERAL, fscale);
+    else if (o[0] === 'nasal') entry = scaled(NASAL, fscale);
+    else if (o[0] === 'trill') entry = scaled(RHOTIC, fscale);
+    else if (o[0] === 'plosive') entry = [vowel[0]*0.7, STOP_LOCUS[o[1]]*fscale, vowel[2]];
+    else if (o[0] === 'fricative') entry = [vowel[0]*0.8, STOP_LOCUS[o[1]]*fscale*0.95, vowel[2]];
+    else entry = vowel;
+    const approach = syl.liquidRelease ? scaled(RHOTIC, fscale) : entry;
+    const exitShape = syl.coda ? scaled(NASAL, fscale) : scaled(NEUTRAL, fscale);
+    const peak = (syl.stressed ? 1.0 : 0.8) * (0.75 + 0.25 * VOWEL_OPEN[syl.vowel]);
+    const floor = note.wordFinal ? 0 : 0.16;
+
+    const sb = Math.max(0, Math.floor(note.start * SR / BLOCK));
+    const eb = Math.min(nblocks - 1, Math.floor((note.start + d) * SR / BLOCK));
+    if (sb > eb) continue;
+
+    for (let block = sb; block <= eb; block++) {
+      const t = (block * BLOCK) / SR - note.start;
+      if (t < 0) continue;
+      let amp = 0, voiced = 0, noise = 0, nHz = 2000, nQ = 2, trill = 0;
+      let pos = vowel.slice(), bw = VOWEL_BW.slice();
+
+      if (t < onsetDur) {
+        const u = onsetDur > 0 ? t / onsetDur : 1;
+        if (o[0] === 'none') { amp = carry + (peak - carry) * u; voiced = 1; pos = entry.slice(); }
+        else if (o[0] === 'plosive') {
+          const burstStart = 0.78;
+          if (u < burstStart) {
+            amp = o[2] ? peak * VOICE_BAR * (1 - u) : 0;
+            voiced = o[2] ? 1 : 0;
+            pos = [180 * fscale, entry[1], entry[2]]; bw = [240, 320, 400];
+          } else {
+            const bu = (u - burstStart) / (1 - burstStart);
+            amp = peak * BURST_LEVEL * Math.exp(-bu * 4.5); noise = 1;
+            voiced = o[2] ? 0.25 : 0;
+            [nHz, nQ] = PLACE_BURST[o[1]]; pos = entry.slice(); bw = [140, 200, 260];
+          }
+        } else if (o[0] === 'fricative') {
+          amp = peak * FRICATIVE_LEVEL * smoothstep(Math.min(1, u*3)) * (1 - 0.25*smoothstep(Math.max(0, u*2-1)));
+          noise = 1; voiced = o[2] ? 0.4 : 0;
+          const pb = PLACE_BURST[o[1]]; nHz = pb[0] * 1.15; nQ = pb[1] * 1.6;
+          pos = entry.slice();
+        } else if (o[0] === 'nasal') {
+          amp = carry + (peak*0.55 - carry) * smoothstep(Math.min(1, u*2.5));
+          voiced = 1; pos = entry.slice(); bw = [190, 250, 320];
+        } else if (o[0] === 'liquid') {
+          amp = carry + (peak*0.7 - carry) * smoothstep(Math.min(1, u*2));
+          voiced = 1; pos = entry.slice();
+        } else if (o[0] === 'trill') {
+          amp = peak * 0.8; voiced = 1; pos = entry.slice(); trill = 1;
+        }
+      } else if (t < onsetDur + bodyDur) {
+        const u = (t - onsetDur) / bodyDur;
+        const attack = Math.min(0.35, Math.max(0.05, 0.014 / bodyDur));
+        const release = Math.min(0.35, Math.max(0.05, 0.026 / bodyDur));
+        const entryAmp = onsetDur > 0 ? peak * 0.6 : carry;
+        if (u < attack) amp = entryAmp + (peak - entryAmp) * smoothstep(u / attack);
+        else if (u > 1 - release) {
+          const r = (u - (1 - release)) / release;
+          const target = syl.coda ? peak * 0.45 : floor;
+          amp = (peak * 0.88) + (target - peak * 0.88) * smoothstep(r);
+        } else amp = peak * (1 - 0.12 * (u - attack) / Math.max(0.01, 1 - attack - release));
+        voiced = 1; noise = v.breathiness * 0.5;
+        const glide = syl.liquidRelease ? 0.42 : 0.3;
+        if (u < glide) {
+          const g = smoothstep(u / glide);
+          const from = (syl.liquidRelease && u < glide * 0.45) ? entry : approach;
+          pos = [lerp(from[0],vowel[0],g), lerp(from[1],vowel[1],g), lerp(from[2],vowel[2],g)];
+        }
+        if (o[0] === 'trill') trill = 1;
+      } else {
+        const u = codaDur > 0 ? (t - onsetDur - bodyDur) / codaDur : 1;
+        amp = peak * 0.45 * (1 - smoothstep(u)) + floor * smoothstep(u);
+        voiced = 1;
+        const g = smoothstep(u);
+        pos = [lerp(vowel[0],exitShape[0],g), lerp(vowel[1],exitShape[1],g), lerp(vowel[2],exitShape[2],g)];
+        bw = [lerp(VOWEL_BW[0],200,g), lerp(VOWEL_BW[1],260,g), lerp(VOWEL_BW[2],340,g)];
+      }
+
+      const absT = note.start + t;
+      const semi = semitoneAt(v, note.index) - v.declination * note.progress;
+      const vramp = Math.min(1, t / 0.12);
+      const vib = Math.sin(2 * Math.PI * v.vibratoRate * absT) * v.vibratoDepth * vramp;
+      const scoop = syl.stressed ? -1.0 * Math.exp(-t / 0.05) : 0;
+      F.f0[block] = v.fundamental * Math.pow(2, (semi + vib + scoop) / 12);
+      F.amp[block] = Math.max(0, amp); F.voiced[block] = voiced; F.noise[block] = noise;
+      F.f1[block] = pos[0]; F.f2[block] = pos[1]; F.f3[block] = pos[2];
+      F.b1[block] = bw[0];  F.b2[block] = bw[1];  F.b3[block] = bw[2];
+      F.nHz[block] = nHz;   F.nQ[block] = nQ;     F.trill[block] = trill;
+      carry = F.amp[block];
+    }
+  }
+
+  // ---- synthesise ----
+  const out = new Float32Array(n);
+  const rng = mulberry32(seed);
+  const f1 = new Biquad(SR), f2 = new Biquad(SR), f3 = new Biquad(SR), nb = new Biquad(SR);
+  const gb2 = G2_BASE + G2_BRIGHT * v.brightness, gb3 = G3_BASE + G3_BRIGHT * v.brightness;
+  const oq = 0.55 + 0.25 * v.breathiness, growl = v.growl;
+  let phase = 0, prevFlow = 0, even = true, trillPhase = 0;
+
+  const rosenberg = (p, q) => {
+    const oqc = Math.min(0.92, Math.max(0.35, q)), pk = oqc * 0.72;
+    if (p < pk) { const x = p / pk; return 3*x*x - 2*x*x*x; }
+    if (p < oqc) { const x = (p - pk) / (oqc - pk); return 1 - x*x; }
+    return 0;
+  };
+
+  for (let block = 0; block < Math.floor(n / BLOCK) + 1; block++) {
+    const i0 = Math.min(block, nblocks - 1), i1 = Math.min(block + 1, nblocks - 1);
+    f1.bandpass(F.f1[i0], F.b1[i0]); f2.bandpass(F.f2[i0], F.b2[i0]); f3.bandpass(F.f3[i0], F.b3[i0]);
+    nb.bandpass(F.nHz[i0], Math.max(120, F.nHz[i0] / Math.max(0.4, F.nQ[i0])));
+    const ref = Math.max(120, F.f1[i0]);
+    const g2 = gb2 * Math.pow(F.f2[i0] / ref, TILT2);
+    const g3 = gb3 * Math.pow(F.f3[i0] / ref, TILT3);
+
+    const start = block * BLOCK, end = Math.min(start + BLOCK, n);
+    if (start >= end) break;
+    for (let i = start; i < end; i++) {
+      const u = (i - start) / BLOCK;
+      const f0 = lerp(F.f0[i0], F.f0[i1], u), amp = lerp(F.amp[i0], F.amp[i1], u);
+      const vg = lerp(F.voiced[i0], F.voiced[i1], u), ng = lerp(F.noise[i0], F.noise[i1], u);
+      const td = lerp(F.trill[i0], F.trill[i1], u);
+      phase += f0 / SR;
+      if (phase >= 1) { phase -= 1; even = !even; }
+      const pg = (growl > 0.01 && !even) ? 1 - 0.55 * growl : 1;
+      const flow = rosenberg(phase, oq) * pg;
+      const rad = (flow - 0.97 * prevFlow) * SOURCE_MAKEUP;
+      prevFlow = flow;
+      const src = (rad + rng() * v.breathiness * 0.18) * vg;
+      const vo = f1.process(src) + f2.process(src) * g2 + f3.process(src) * g3;
+      const no = nb.process(rng()) * ng;
+      let s = vo * VOICED_BUS + no * NOISE_BUS;
+      if (td > 0.01) {
+        trillPhase += 27.0 / SR;
+        if (trillPhase >= 1) trillPhase -= 1;
+        const flutter = 0.45 + 0.55 * (0.5 - 0.5 * Math.cos(2 * Math.PI * trillPhase));
+        s *= 1 - td + td * flutter;
+      }
+      out[i] = s * amp;
+    }
+  }
+
+  // ---- output shaping ----
+  const hp = new Biquad(SR); hp.highpass(75);
+  const lp = new Biquad(SR); lp.lowpass(Math.min(9500, SR * 0.44));
+  const drive = 1 + 3 * v.growl, norm = Math.tanh(drive);
+  for (let i = 0; i < n; i++) {
+    let x = hp.process(out[i]);
+    x = Math.tanh(x * drive) / norm;
+    out[i] = lp.process(x);
+  }
+  let peak = 0;
+  for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(out[i]));
+  if (peak > 1e-6) { const g = 0.89 / peak; for (let i = 0; i < n; i++) out[i] *= g; }
+  const fade = (sec, atStart) => {
+    const c = Math.min(n, Math.floor(sec * SR));
+    if (c <= 1) return;
+    for (let i = 0; i < c; i++) out[atStart ? i : n - 1 - i] *= i / (c - 1);
+  };
+  fade(0.004, true); fade(0.015, false);
+  return out;
+}
+
+const SAMPLE_RATE = SR;
+
+// ===== creature renderer (port of CreatureRenderer.swift) =====
+// Canvas 2D port of CreatureRenderer.swift. Same parts vocabulary, same unit
+// coordinate space (0..1 square), so a recipe draws identically in both.
+
+const INK = '#1B1524';
+
+function hex(n) { return '#' + n.toString(16).padStart(6, '0'); }
+
+const BODY_RECTS = {
+  blob:     [0.16, 0.40, 0.68, 0.50],
+  pear:     [0.20, 0.38, 0.60, 0.54],
+  tall:     [0.29, 0.30, 0.42, 0.62],
+  wide:     [0.12, 0.46, 0.76, 0.38],
+  fruit:    [0.23, 0.34, 0.54, 0.56],
+  cup:      [0.26, 0.40, 0.48, 0.48],
+  log:      [0.32, 0.20, 0.36, 0.72],
+  fuselage: [0.15, 0.44, 0.70, 0.34]
+};
+
+function anatomy(r) {
+  const [x, y, w, h] = BODY_RECTS[r.body];
+  const body = { minX:x, minY:y, w, h, maxX:x+w, maxY:y+h, midX:x+w/2, midY:y+h/2 };
+  if (r.head === 'merged') {
+    const c = { x: body.midX, y: body.minY + body.h * 0.34 };
+    return { body, headCenter:c, headRadius:0, faceCenter:c, faceScale:Math.min(body.w, body.h) * 0.9 };
+  }
+  const radius = r.head === 'wedge' ? 0.19 : 0.165;
+  const c = r.body === 'wide'
+    ? { x: body.minX + 0.10, y: body.minY - 0.02 }
+    : { x: body.midX, y: body.minY - radius * 0.55 };
+  return { body, headCenter:c, headRadius:radius,
+           faceCenter:{ x:c.x, y:c.y + radius * 0.12 }, faceScale:radius * 2 };
+}
+
+function drawCreature(ctx, recipe, size, opts = {}) {
+  const pal = recipe.palette;
+  const inset = size * 0.06;
+  const R = { x: inset, y: inset, w: size - inset * 2 };
+  const P = (ux, uy) => [R.x + ux * R.w, R.y + uy * R.w];
+  const S = u => u * R.w;
+  const a = anatomy(recipe);
+  const lw = S(0.012);
+
+  if (opts.backdrop !== false) {
+    const g = ctx.createLinearGradient(0, 0, size, size);
+    g.addColorStop(0, hex(pal.backdropTop));
+    g.addColorStop(1, hex(pal.backdropBottom));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+  }
+
+  const stroke = (color = INK, width = lw) => { ctx.strokeStyle = color; ctx.lineWidth = width; ctx.stroke(); };
+  const fill = c => { ctx.fillStyle = c; ctx.fill(); };
+  const bodyGradient = () => {
+    const [x0, y0] = P(0.3, 0.2), [x1, y1] = P(0.8, 1.0);
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, hex(pal.body)); g.addColorStop(1, hex(pal.bodyShade));
+    return g;
+  };
+  const circlePath = (cx, cy, rad) => {
+    const [x, y] = P(cx, cy);
+    ctx.beginPath(); ctx.arc(x, y, S(rad), 0, Math.PI * 2);
+  };
+  const ellipseRect = (rx, ry, rw, rh) => {
+    const [x, y] = P(rx, ry);
+    ctx.beginPath();
+    ctx.ellipse(x + S(rw) / 2, y + S(rh) / 2, S(rw) / 2, S(rh) / 2, 0, 0, Math.PI * 2);
+  };
+  const roundRectPath = (rx, ry, rw, rh, rad) => {
+    const [x, y] = P(rx, ry);
+    ctx.beginPath(); ctx.roundRect(x, y, S(rw), S(rh), S(rad));
+  };
+
+  const b = a.body;
+
+  // ---------------------------------------------------------- back props ---
+  if (recipe.prop === 'planetRing') {
+    const [x, y] = P(b.midX - 0.46, b.midY - 0.11);
+    ctx.beginPath();
+    ctx.ellipse(x + S(0.46), y + S(0.11), S(0.46), S(0.11), 0, 0, Math.PI * 2);
+    stroke(hex(pal.accent), S(0.05));
+    stroke('rgba(27,21,36,0.4)', S(0.008));
+  } else if (recipe.prop === 'sparkles') {
+    for (const [sx, sy, k] of [[0.14,0.20,0.055],[0.86,0.30,0.042],[0.20,0.78,0.035],[0.82,0.70,0.050]]) {
+      const [cx, cy] = P(sx, sy); const s = S(k);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - s);
+      ctx.quadraticCurveTo(cx, cy, cx + s, cy);
+      ctx.quadraticCurveTo(cx, cy, cx, cy + s);
+      ctx.quadraticCurveTo(cx, cy, cx - s, cy);
+      ctx.quadraticCurveTo(cx, cy, cx, cy - s);
+      fill(hex(pal.accent));
+    }
+  } else if (recipe.prop === 'propeller') {
+    ctx.beginPath();
+    ctx.moveTo(...P(b.maxX - 0.02, b.midY - 0.16));
+    ctx.lineTo(...P(b.maxX + 0.03, b.midY + 0.16));
+    stroke('rgba(27,21,36,0.7)', S(0.03));
+  }
+
+  // -------------------------------------------------------------- limbs ---
+  const limb = (x, y, w, h) => { roundRectPath(x, y, w, h, w / 2); fill(hex(pal.bodyShade)); stroke(); };
+  switch (recipe.limbs) {
+    case 'stubby':
+      limb(b.midX - 0.17, b.maxY - 0.03, 0.10, 0.14);
+      limb(b.midX + 0.07, b.maxY - 0.03, 0.10, 0.14); break;
+    case 'long':
+      limb(b.midX - 0.17, b.maxY - 0.04, 0.075, 0.22);
+      limb(b.midX + 0.09, b.maxY - 0.04, 0.075, 0.22);
+      limb(b.minX - 0.05, b.minY + b.h * 0.20, 0.065, 0.20);
+      limb(b.maxX - 0.02, b.minY + b.h * 0.20, 0.065, 0.20); break;
+    case 'hooves':
+      for (const x of [b.minX + 0.06, b.minX + 0.22, b.maxX - 0.30, b.maxX - 0.14]) {
+        limb(x, b.maxY - 0.03, 0.075, 0.18);
+        roundRectPath(x, b.maxY + 0.09, 0.075, 0.06, 0.02);
+        fill('rgba(27,21,36,0.8)');
+      } break;
+    case 'fins':
+      for (const side of [-1, 1]) {
+        const ax = side < 0 ? b.minX + 0.03 : b.maxX - 0.03;
+        ctx.beginPath();
+        ctx.moveTo(...P(ax, b.midY - 0.02));
+        ctx.quadraticCurveTo(...P(ax + side*0.18, b.midY - 0.06), ...P(ax + side*0.19, b.midY + 0.13));
+        ctx.quadraticCurveTo(...P(ax + side*0.07, b.midY + 0.12), ...P(ax, b.midY + 0.09));
+        ctx.closePath(); fill(hex(pal.bodyShade)); stroke();
+      } break;
+    case 'wings':
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(...P(b.midX, b.midY - 0.02));
+        ctx.lineTo(...P(b.midX + side*0.46, b.midY - 0.26));
+        ctx.lineTo(...P(b.midX + side*0.40, b.midY + 0.06));
+        ctx.closePath();
+        const [gx0, gy0] = P(b.midX, b.midY), [gx1, gy1] = P(b.midX + side*0.4, b.midY);
+        const g = ctx.createLinearGradient(gx0, gy0, gx1, gy1);
+        g.addColorStop(0, hex(pal.bodyShade)); g.addColorStop(1, hex(pal.body));
+        fill(g); stroke();
+      } break;
+    case 'tentacles':
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 5; i++) {
+        const t = i / 4, x = b.minX + b.w * (0.10 + 0.80 * t), even = i % 2 === 0;
+        ctx.beginPath();
+        ctx.moveTo(...P(x, b.maxY - 0.04));
+        ctx.quadraticCurveTo(...P(x + (even ? -0.04 : 0.04), b.maxY + 0.06),
+                             ...P(x + (even ?  0.05 : -0.05), b.maxY + 0.14));
+        stroke(hex(pal.bodyShade), S(0.045));
+      }
+      ctx.lineCap = 'butt'; break;
+  }
+
+  // --------------------------------------------------------------- body ---
+  ctx.beginPath();
+  switch (recipe.body) {
+    case 'blob': case 'fruit': {
+      const [x, y] = P(b.minX, b.minY);
+      ctx.ellipse(x + S(b.w)/2, y + S(b.h)/2, S(b.w)/2, S(b.h)/2, 0, 0, Math.PI*2); break;
+    }
+    case 'pear':
+      ctx.moveTo(...P(b.midX, b.minY));
+      ctx.quadraticCurveTo(...P(b.maxX + 0.02, b.minY + b.h*0.45), ...P(b.maxX, b.maxY - b.h*0.18));
+      ctx.quadraticCurveTo(...P(b.maxX - b.w*0.1, b.maxY), ...P(b.midX, b.maxY));
+      ctx.quadraticCurveTo(...P(b.minX + b.w*0.1, b.maxY), ...P(b.minX, b.maxY - b.h*0.18));
+      ctx.quadraticCurveTo(...P(b.minX - 0.02, b.minY + b.h*0.45), ...P(b.midX, b.minY));
+      break;
+    case 'tall': case 'wide': {
+      const [x, y] = P(b.minX, b.minY);
+      ctx.roundRect(x, y, S(b.w), S(b.h), S(Math.min(b.w, b.h) * 0.48)); break;
+    }
+    case 'cup':
+      ctx.moveTo(...P(b.minX, b.minY));
+      ctx.lineTo(...P(b.maxX, b.minY));
+      ctx.lineTo(...P(b.maxX - b.w*0.16, b.maxY));
+      ctx.quadraticCurveTo(...P(b.midX, b.maxY + 0.03), ...P(b.minX + b.w*0.16, b.maxY));
+      ctx.closePath(); break;
+    case 'log': {
+      const [x, y] = P(b.minX, b.minY);
+      ctx.roundRect(x, y, S(b.w), S(b.h), S(b.w * 0.30)); break;
+    }
+    case 'fuselage':
+      ctx.moveTo(...P(b.maxX, b.midY));
+      ctx.quadraticCurveTo(...P(b.maxX - b.w*0.35, b.minY - 0.02), ...P(b.minX + b.w*0.12, b.minY));
+      ctx.quadraticCurveTo(...P(b.minX - 0.02, b.minY + b.h*0.3), ...P(b.minX, b.midY));
+      ctx.quadraticCurveTo(...P(b.minX - 0.02, b.maxY - b.h*0.3), ...P(b.minX + b.w*0.12, b.maxY));
+      ctx.quadraticCurveTo(...P(b.maxX - b.w*0.35, b.maxY + 0.02), ...P(b.maxX, b.midY));
+      break;
+  }
+  fill(bodyGradient());
+
+  // ------------------------------------------------------------ pattern ---
+  if (recipe.pattern !== 'none') {
+    ctx.save(); ctx.clip();
+    const ink = hex(pal.bodyShade) + '8C';
+    ctx.fillStyle = ink; ctx.strokeStyle = ink;
+    if (recipe.pattern === 'stripes') {
+      for (let i = 0; i < 1; i += 0.19) {
+        const [x, y] = P(b.minX + b.w * i, b.minY);
+        ctx.fillRect(x, y, S(b.w * 0.075), S(b.h));
+      }
+    } else if (recipe.pattern === 'spots') {
+      for (const [sx, sy, sr] of [[0.28,0.30,0.10],[0.62,0.22,0.07],[0.44,0.62,0.09],[0.75,0.58,0.06],[0.20,0.72,0.06]]) {
+        const [x, y] = P(b.minX + b.w*sx, b.minY + b.h*sy);
+        ctx.beginPath(); ctx.arc(x, y, S(b.w*sr), 0, Math.PI*2); ctx.fill();
+      }
+    } else if (recipe.pattern === 'scales') {
+      let row = 0;
+      for (let y = b.minY; y < b.maxY; y += b.h * 0.13) {
+        for (let x = b.minX + (row % 2 === 0 ? 0 : b.w*0.07); x < b.maxX; x += b.w * 0.14) {
+          const [px, py] = P(x, y);
+          ctx.beginPath();
+          ctx.arc(px + S(b.w*0.15)/2, py, S(b.w*0.15)/2, Math.PI, 0, true);
+          ctx.lineWidth = S(0.008); ctx.stroke();
+        }
+        row++;
+      }
+    } else if (recipe.pattern === 'checker') {
+      let row = 0;
+      for (let y = b.minY; y < b.maxY; y += b.h * 0.15) {
+        let col = 0;
+        for (let x = b.minX; x < b.maxX; x += b.w * 0.17) {
+          if ((row + col) % 2 === 0) {
+            const [px, py] = P(x, y);
+            ctx.fillRect(px, py, S(b.w*0.17), S(b.h*0.15));
+          }
+          col++;
+        }
+        row++;
+      }
+    } else if (recipe.pattern === 'swirl') {
+      const [cx, cy] = P(b.midX, b.midY);
+      ctx.beginPath(); ctx.moveTo(cx, cy);
+      let rad = S(b.w*0.06), ang = 0;
+      while (rad < S(b.w*0.5)) {
+        ang += 0.35; rad += S(b.w*0.012);
+        ctx.lineTo(cx + Math.cos(ang)*rad, cy + Math.sin(ang)*rad);
+      }
+      ctx.lineWidth = S(0.014); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // re-stroke the silhouette over the pattern
+  ctx.save(); ctx.beginPath();
+  switch (recipe.body) {
+    case 'blob': case 'fruit': { const [x,y] = P(b.minX,b.minY);
+      ctx.ellipse(x+S(b.w)/2, y+S(b.h)/2, S(b.w)/2, S(b.h)/2, 0, 0, Math.PI*2); break; }
+    case 'tall': case 'wide': { const [x,y] = P(b.minX,b.minY);
+      ctx.roundRect(x, y, S(b.w), S(b.h), S(Math.min(b.w,b.h)*0.48)); break; }
+    case 'log': { const [x,y] = P(b.minX,b.minY);
+      ctx.roundRect(x, y, S(b.w), S(b.h), S(b.w*0.30)); break; }
+    default: break;
+  }
+  stroke('rgba(27,21,36,0.55)'); ctx.restore();
+
+  // --------------------------------------------------------------- ears ---
+  const c = a.headCenter, hr = Math.max(a.headRadius, 0.14);
+  const mirrored = (build, color = hex(pal.bodyShade)) => {
+    for (const side of [-1, 1]) { build(side); fill(color); stroke(); }
+  };
+  switch (recipe.ears) {
+    case 'round':
+      mirrored(side => circlePath(c.x + side*hr*0.82, c.y - hr*0.62, hr*0.36)); break;
+    case 'pointy':
+      mirrored(side => { ctx.beginPath();
+        ctx.moveTo(...P(c.x + side*hr*0.28, c.y - hr*0.80));
+        ctx.lineTo(...P(c.x + side*hr*0.92, c.y - hr*1.45));
+        ctx.lineTo(...P(c.x + side*hr*1.00, c.y - hr*0.52)); ctx.closePath(); }); break;
+    case 'floppy':
+      mirrored(side => { ctx.beginPath();
+        ctx.moveTo(...P(c.x + side*hr*0.70, c.y - hr*0.45));
+        ctx.quadraticCurveTo(...P(c.x + side*hr*1.55, c.y + hr*0.05), ...P(c.x + side*hr*1.05, c.y + hr*0.65));
+        ctx.quadraticCurveTo(...P(c.x + side*hr*0.85, c.y + hr*0.45), ...P(c.x + side*hr*0.55, c.y + hr*0.05));
+        ctx.closePath(); }); break;
+    case 'horns':
+      mirrored(side => { ctx.beginPath();
+        ctx.moveTo(...P(c.x + side*hr*0.62, c.y - hr*0.62));
+        ctx.lineTo(...P(c.x + side*hr*1.25, c.y - hr*1.20));
+        ctx.lineTo(...P(c.x + side*hr*0.92, c.y - hr*0.45)); ctx.closePath(); }, hex(pal.accent)); break;
+    case 'fin':
+      ctx.beginPath();
+      ctx.moveTo(...P(b.midX - 0.09, b.minY + 0.03));
+      ctx.lineTo(...P(b.midX + 0.02, b.minY - 0.16));
+      ctx.lineTo(...P(b.midX + 0.10, b.minY + 0.03));
+      ctx.closePath(); fill(hex(pal.bodyShade)); stroke(); break;
+    case 'antennae':
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(...P(c.x + side*hr*0.35, c.y - hr*0.85));
+        ctx.quadraticCurveTo(...P(c.x + side*hr*0.45, c.y - hr*1.40), ...P(c.x + side*hr*0.95, c.y - hr*1.60));
+        stroke(hex(pal.bodyShade), S(0.016));
+        circlePath(c.x + side*hr*0.95, c.y - hr*1.60, hr*0.20);
+        fill(hex(pal.accent)); stroke();
+      } break;
+    case 'leaf':
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(...P(c.x + side*hr*0.25, c.y - hr*0.85));
+        ctx.quadraticCurveTo(...P(c.x + side*hr*1.20, c.y - hr*0.55), ...P(c.x + side*hr*1.30, c.y - hr*1.35));
+        ctx.quadraticCurveTo(...P(c.x + side*hr*0.55, c.y - hr*1.55), ...P(c.x + side*hr*0.25, c.y - hr*0.85));
+        fill(hex(pal.accent)); stroke();
+      } break;
+  }
+
+  // --------------------------------------------------------------- head ---
+  if (recipe.head !== 'merged') {
+    const hrad = a.headRadius;
+    ctx.beginPath();
+    if (recipe.head === 'round') { const [x,y] = P(c.x, c.y); ctx.arc(x, y, S(hrad), 0, Math.PI*2); }
+    else if (recipe.head === 'snout') {
+      const [x,y] = P(c.x, c.y); ctx.arc(x, y, S(hrad), 0, Math.PI*2);
+      const [mx,my] = P(c.x + hrad*0.05, c.y + hrad*0.45);
+      ctx.moveTo(mx + S(hrad*0.62), my); ctx.arc(mx, my, S(hrad*0.62), 0, Math.PI*2);
+    } else if (recipe.head === 'wedge') {
+      ctx.moveTo(...P(c.x - hrad*1.15, c.y - hrad*0.35));
+      ctx.quadraticCurveTo(...P(c.x, c.y - hrad*1.05), ...P(c.x + hrad*1.2, c.y + hrad*0.1));
+      ctx.quadraticCurveTo(...P(c.x, c.y + hrad*1.0), ...P(c.x - hrad*1.15, c.y + hrad*0.75));
+      ctx.closePath();
+    } else if (recipe.head === 'beak') { const [x,y] = P(c.x, c.y); ctx.arc(x, y, S(hrad*0.92), 0, Math.PI*2); }
+    else if (recipe.head === 'box') {
+      const [x,y] = P(c.x - hrad, c.y - hrad);
+      ctx.roundRect(x, y, S(hrad*2), S(hrad*2), S(hrad*0.3));
+    }
+    const [gx0,gy0] = P(c.x - hrad, c.y - hrad), [gx1,gy1] = P(c.x + hrad, c.y + hrad);
+    const hg = ctx.createLinearGradient(gx0, gy0, gx1, gy1);
+    hg.addColorStop(0, hex(pal.body)); hg.addColorStop(1, hex(pal.bodyShade));
+    fill(hg); stroke();
+
+    if (recipe.head === 'beak') {
+      ctx.beginPath();
+      ctx.moveTo(...P(c.x + hrad*0.75, c.y - hrad*0.12));
+      ctx.lineTo(...P(c.x + hrad*1.7,  c.y + hrad*0.14));
+      ctx.lineTo(...P(c.x + hrad*0.75, c.y + hrad*0.42));
+      ctx.closePath(); fill(hex(pal.accent)); stroke();
+    }
+  }
+
+  // --------------------------------------------------------------- eyes ---
+  const f = a.faceCenter, fs = a.faceScale;
+  const dx = fs * 0.23, ey = f.y - fs * 0.06;
+  switch (recipe.eyes) {
+    case 'big': case 'googly': {
+      const drift = recipe.eyes === 'googly' ? 0.035 : 0;
+      for (const side of [-1, 1]) {
+        circlePath(f.x + side*dx, ey, fs*0.155); fill('#fff'); stroke();
+        circlePath(f.x + side*dx + side*drift, ey + drift, fs*0.072); fill(INK);
+      } break;
+    }
+    case 'beady':
+      for (const side of [-1, 1]) { circlePath(f.x + side*dx, ey, fs*0.055); fill(INK); } break;
+    case 'sleepy':
+      for (const side of [-1, 1]) {
+        circlePath(f.x + side*dx, ey, fs*0.14); fill('#fff'); stroke();
+        circlePath(f.x + side*dx, ey + fs*0.045, fs*0.062); fill(INK);
+        ctx.beginPath();
+        ctx.moveTo(...P(f.x + side*dx - fs*0.15, ey - fs*0.02));
+        ctx.quadraticCurveTo(...P(f.x + side*dx, ey - fs*0.20), ...P(f.x + side*dx + fs*0.15, ey - fs*0.02));
+        stroke(INK, S(0.018));
+      } break;
+    case 'shades': {
+      roundRectPath(f.x - dx - fs*0.20, ey - fs*0.11, dx*2 + fs*0.40, fs*0.22, fs*0.06);
+      fill(INK);
+      ctx.beginPath();
+      ctx.moveTo(...P(f.x - dx*0.6, ey + fs*0.05));
+      ctx.lineTo(...P(f.x - dx*0.2, ey - fs*0.06));
+      stroke('rgba(255,255,255,0.75)', S(0.012)); break;
+    }
+    case 'single':
+      circlePath(f.x, ey, fs*0.24); fill('#fff'); stroke();
+      circlePath(f.x, ey, fs*0.10); fill(INK); break;
+  }
+
+  // -------------------------------------------------------------- mouth ---
+  const my = f.y + fs * 0.26;
+  switch (recipe.mouth) {
+    case 'flat':
+      ctx.beginPath(); ctx.moveTo(...P(f.x - fs*0.13, my)); ctx.lineTo(...P(f.x + fs*0.13, my));
+      stroke(INK, S(0.016)); break;
+    case 'smile': case 'grin':
+      ctx.beginPath();
+      ctx.moveTo(...P(f.x - fs*0.18, my - fs*0.04));
+      ctx.quadraticCurveTo(...P(f.x, my + fs*0.16), ...P(f.x + fs*0.18, my - fs*0.04));
+      stroke(INK, S(0.016));
+      if (recipe.mouth === 'grin') {
+        ctx.beginPath();
+        ctx.moveTo(...P(f.x - fs*0.15, my + fs*0.005));
+        ctx.lineTo(...P(f.x + fs*0.15, my + fs*0.005));
+        stroke(INK, S(0.010));
+      } break;
+    case 'gasp': circlePath(f.x, my + fs*0.03, fs*0.11); fill(INK); break;
+    case 'fangs':
+      ctx.beginPath();
+      ctx.moveTo(...P(f.x - fs*0.22, my - fs*0.03));
+      ctx.quadraticCurveTo(...P(f.x, my + fs*0.14), ...P(f.x + fs*0.22, my - fs*0.03));
+      stroke(INK, S(0.016));
+      for (const off of [-0.12, 0.02]) {
+        ctx.beginPath();
+        ctx.moveTo(...P(f.x + off, my - fs*0.01));
+        ctx.lineTo(...P(f.x + off + fs*0.05, my - fs*0.01));
+        ctx.lineTo(...P(f.x + off + fs*0.025, my + fs*0.09));
+        ctx.closePath(); fill('#fff'); stroke(INK, S(0.008));
+      } break;
+  }
+
+  // -------------------------------------------------------- front props ---
+  switch (recipe.prop) {
+    case 'sneakers':
+      for (const x of [b.midX - 0.30, b.midX - 0.05, b.midX + 0.20]) {
+        roundRectPath(x, b.maxY + 0.05, 0.16, 0.075, 0.032); fill('#fff'); stroke();
+        ctx.beginPath();
+        ctx.moveTo(...P(x + 0.02, b.maxY + 0.10));
+        ctx.quadraticCurveTo(...P(x + 0.08, b.maxY + 0.11), ...P(x + 0.13, b.maxY + 0.068));
+        stroke(hex(pal.accent), S(0.014));
+      } break;
+    case 'bomb':
+      circlePath(b.midX + 0.02, b.maxY + 0.06, 0.115); fill(INK); stroke();
+      ctx.beginPath();
+      ctx.moveTo(...P(b.midX + 0.08, b.maxY - 0.03));
+      ctx.quadraticCurveTo(...P(b.midX + 0.17, b.maxY - 0.02), ...P(b.midX + 0.17, b.maxY - 0.12));
+      stroke(hex(pal.accent), S(0.018));
+      circlePath(b.midX + 0.17, b.maxY - 0.135, 0.028); fill('#FFB030'); break;
+    case 'coffeeCup':
+      roundRectPath(b.maxX - 0.02, b.midY - 0.04, 0.17, 0.20, 0.03); fill('#fff'); stroke();
+      { const [hx, hy] = P(b.maxX + 0.16, b.midY + 0.06);
+        ctx.beginPath(); ctx.arc(hx, hy, S(0.06), -1.4, 1.4); stroke(INK, S(0.016)); } break;
+    case 'cactus':
+      for (const side of [-1, 1]) {
+        roundRectPath(b.midX + side*0.22 - (side < 0 ? 0.08 : 0), b.minY + 0.16, 0.09, 0.24, 0.045);
+        fill(hex(pal.body)); stroke();
+      } break;
+    case 'banana':
+      ctx.beginPath();
+      ctx.moveTo(...P(b.midX - 0.24, b.minY + 0.10));
+      ctx.quadraticCurveTo(...P(b.midX, b.maxY + 0.10), ...P(b.midX + 0.24, b.minY + 0.10));
+      ctx.quadraticCurveTo(...P(b.midX, b.maxY - 0.06), ...P(b.midX - 0.24, b.minY + 0.10));
+      fill('#F2C63D'); stroke(); break;
+    case 'drumstick':
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(...P(b.maxX + 0.02, b.maxY - 0.02));
+      ctx.lineTo(...P(b.maxX + 0.20, b.minY + 0.06));
+      stroke(hex(pal.accent), S(0.055)); stroke(INK, S(0.008));
+      ctx.lineCap = 'butt'; break;
+    case 'melon': {
+      const [mx, myy] = P(b.midX, b.midY + 0.16);
+      ctx.beginPath(); ctx.moveTo(...P(b.midX - 0.20, b.midY + 0.16));
+      ctx.lineTo(...P(b.midX + 0.20, b.midY + 0.16));
+      ctx.arc(mx, myy, S(0.20), 0, Math.PI);
+      ctx.closePath(); fill(hex(pal.accent)); stroke();
+      for (const d of [-0.09, 0, 0.09]) { circlePath(b.midX + d, b.midY + 0.24, 0.016); fill(INK); }
+      break;
+    }
+    case 'pineapple':
+      for (const side of [-1, 0, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(...P(b.midX + side*0.05, b.minY + 0.02));
+        ctx.lineTo(...P(b.midX + side*0.16, b.minY - 0.18));
+        ctx.lineTo(...P(b.midX + side*0.11, b.minY + 0.02));
+        ctx.closePath(); fill(hex(pal.accent)); stroke();
+      } break;
+    case 'tyre': {
+      const [tx, ty] = P(b.midX, b.midY);
+      ctx.beginPath(); ctx.ellipse(tx, ty, S(0.30), S(0.24), 0, 0, Math.PI*2);
+      stroke('#2A2A2E', S(0.085)); stroke('rgba(27,21,36,0.5)', S(0.008)); break;
+    }
+    case 'coconut':
+      for (const [ddx, ddy] of [[-0.09,-0.03],[0.09,-0.03],[0,0.09]]) {
+        circlePath(b.midX + ddx, b.midY + ddy, 0.038); fill('rgba(27,21,36,0.75)');
+      } break;
+    case 'berry':
+      for (const side of [-1, 0, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(...P(b.midX, b.minY - 0.01));
+        ctx.quadraticCurveTo(...P(b.midX + side*0.15, b.minY - 0.02), ...P(b.midX + side*0.16, b.minY - 0.11));
+        ctx.quadraticCurveTo(...P(b.midX + side*0.05, b.minY - 0.09), ...P(b.midX, b.minY - 0.01));
+        fill(hex(pal.accent)); stroke();
+      } break;
+    case 'ball':
+      for (const [ddx, ddy] of [[0,-0.10],[-0.15,0.08],[0.15,0.08]]) {
+        const [px, py] = P(b.midX + ddx, b.midY + ddy), k = S(0.075);
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+          const ang = i/5 * Math.PI*2 - Math.PI/2;
+          const pt = [px + Math.cos(ang)*k, py + Math.sin(ang)*k];
+          i === 0 ? ctx.moveTo(...pt) : ctx.lineTo(...pt);
+        }
+        ctx.closePath(); fill(INK); stroke();
+      } break;
+    case 'clock':
+      circlePath(b.maxX + 0.06, b.midY - 0.02, 0.115); fill('#fff'); stroke();
+      ctx.beginPath();
+      ctx.moveTo(...P(b.maxX + 0.06, b.midY - 0.02)); ctx.lineTo(...P(b.maxX + 0.06, b.midY - 0.10));
+      ctx.moveTo(...P(b.maxX + 0.06, b.midY - 0.02)); ctx.lineTo(...P(b.maxX + 0.12, b.midY - 0.02));
+      stroke(INK, S(0.014)); break;
+    case 'cigar':
+      roundRectPath(f.x + 0.05, f.y + fs*0.22, 0.20, 0.045, 0.02); fill('#6B4A2A'); stroke();
+      circlePath(f.x + 0.26, f.y + fs*0.24, 0.022); fill('#FF7A30'); break;
+    case 'fridge':
+      roundRectPath(b.minX - 0.12, b.minY - 0.04, 0.20, 0.34, 0.03); fill(hex(pal.accent)); stroke();
+      ctx.beginPath();
+      ctx.moveTo(...P(b.minX - 0.005, b.minY + 0.06)); ctx.lineTo(...P(b.minX - 0.005, b.minY + 0.16));
+      stroke(INK, S(0.016)); break;
+    case 'blade':
+      ctx.lineCap = 'round';
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(...P(b.midX + side*0.10, b.maxY - 0.02));
+        ctx.lineTo(...P(b.midX + side*0.40, b.minY - 0.06));
+        stroke('#D8DCE4', S(0.030)); stroke(INK, S(0.007));
+      }
+      ctx.lineCap = 'butt'; break;
+    case 'tutu':
+      ctx.beginPath();
+      ctx.moveTo(...P(b.midX - 0.12, b.maxY - 0.10));
+      ctx.quadraticCurveTo(...P(b.midX, b.maxY - 0.02), ...P(b.midX + 0.12, b.maxY - 0.10));
+      ctx.lineTo(...P(b.midX + 0.30, b.maxY + 0.04));
+      ctx.quadraticCurveTo(...P(b.midX, b.maxY + 0.14), ...P(b.midX - 0.30, b.maxY + 0.04));
+      ctx.closePath(); fill(hex(pal.accent)); stroke(); break;
+  }
+}
+
+// ===== game =====
+// ---------------------------------------------------------------- audio ---
+let audioCtx = null, analyser = null, current = null, meterRAF = 0;
+const buffers = new Map();
+
+function scaleFor(name) {
+  return name === 'chanterScale' ? [0, 1, 5, 7] : SCALES[name] || SCALES.major;
+}
+function voiceOf(c) {
+  const v = Object.assign({}, c.voice);
+  v.scale = scaleFor(v.scale);
+  return v;
+}
+
+function bufferFor(c) {
+  if (buffers.has(c.id)) return buffers.get(c.id);
+  const samples = render(c.chant, voiceOf(c), 0x5EED);
+  const gap = Math.floor(0.45 * SAMPLE_RATE);
+  const buf = audioCtx.createBuffer(1, samples.length + gap, SAMPLE_RATE);
+  buf.copyToChannel(samples, 0);
+  buffers.set(c.id, buf);
+  return buf;
+}
+
+// Fills the buffer cache during idle time. Rendering a chant is a few hundred
+// milliseconds of main-thread maths, which would show as a stall right when a
+// round starts; doing it ahead of time means only the very first play can wait.
+function warmCache() {
+  const queue = CATALOG.slice();
+  const idle = window.requestIdleCallback || (fn => setTimeout(() => fn({ timeRemaining: () => 8 }), 32));
+  const step = deadline => {
+    while (queue.length && deadline.timeRemaining() > 4) bufferFor(queue.shift());
+    if (queue.length) idle(step);
+  };
+  idle(step);
+}
+
+function stopAudio() {
+  if (current) { try { current.stop(); } catch (e) {} current.disconnect(); current = null; }
+}
+
+function play(c, loop) {
+  if (!audioCtx) return;
+  stopAudio();
+  const src = audioCtx.createBufferSource();
+  src.buffer = bufferFor(c);
+  src.loop = !!loop;
+  src.connect(analyser);
+  src.start();
+  current = src;
+}
+
+// The bars are driven by a real AnalyserNode, so they track the actual formants
+// moving through the chant rather than miming to a timer.
+function startMeter() {
+  const canvas = document.getElementById('meter');
+  const g = canvas.getContext('2d');
+  const bins = new Uint8Array(analyser.frequencyBinCount);
+  const BARS = 22;
+  function frame() {
+    meterRAF = requestAnimationFrame(frame);
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    analyser.getByteFrequencyData(bins);
+    const gap = 4, bw = (w - gap * (BARS - 1)) / BARS;
+    for (let i = 0; i < BARS; i++) {
+      // log-ish spacing so the low formants get the room they deserve
+      const lo = Math.floor(Math.pow(i / BARS, 1.7) * bins.length * 0.55);
+      const hi = Math.max(lo + 1, Math.floor(Math.pow((i + 1) / BARS, 1.7) * bins.length * 0.55));
+      let sum = 0;
+      for (let k = lo; k < hi; k++) sum += bins[k];
+      const level = Math.min(1, (sum / (hi - lo)) / 190);
+      const bh = Math.max(3, level * h);
+      g.fillStyle = current ? '#FF7A45' : 'rgba(242,239,233,.14)';
+      g.globalAlpha = current ? 0.35 + level * 0.65 : 1;
+      g.beginPath();
+      g.roundRect(i * (bw + gap), (h - bh) / 2, bw, bh, bw / 2);
+      g.fill();
+    }
+    g.globalAlpha = 1;
+  }
+  frame();
+}
+
+// ------------------------------------------------------------ character ---
+function avgPitch(c) {
+  const v = voiceOf(c), m = v.melody, n = v.scale.length;
+  let sum = 0;
+  for (let i = 0; i < m.length; i++) {
+    const d = m[((i % m.length) + m.length) % m.length];
+    const oct = Math.floor(d / n), idx = d - oct * n;
+    sum += v.fundamental * Math.pow(2, (v.scale[idx] + 12 * oct) / 12);
+  }
+  return sum / m.length;
+}
+function syllableCount(c) {
+  return parseChant(c.chant).reduce((n, w) => n + w.length, 0);
+}
+const META = new Map();
+function meta(c) {
+  if (!META.has(c.id)) META.set(c.id, { pitch: avgPitch(c), syl: syllableCount(c) });
+  return META.get(c.id);
+}
+// Mirrors BrainrotCharacter.distance(to:)
+function distance(a, b) {
+  const ma = meta(a), mb = meta(b);
+  return Math.abs(Math.log2(ma.pitch) - Math.log2(mb.pitch)) * 4
+       + Math.abs(a.voice.tempo - b.voice.tempo) * 0.45
+       + Math.abs(ma.syl - mb.syl) * 0.28
+       + (a.family === b.family ? 0 : 0.7);
+}
+
+// ------------------------------------------------------------ challenge ---
+const DIFF = {
+  gentle:    { tiles:3, rounds:1, band:[0.55,1.0], lock:600,  penalty:'reshuffle', replay:true,
+               blurb:'3 tiles, 1 round, nothing similar. For soft landings.' },
+  standard:  { tiles:4, rounds:2, band:[0.25,0.85], lock:1000, penalty:'reshuffle', replay:true,
+               blurb:'4 tiles, 2 rounds. The default.' },
+  brutal:    { tiles:6, rounds:3, band:[0.0,0.5],  lock:1500, penalty:'addRound',  replay:true,
+               blurb:'6 tiles, 3 rounds, similar-sounding decoys. A miss adds a round.' },
+  nightmare: { tiles:9, rounds:3, band:[0.0,0.3],  lock:2500, penalty:'restart',   replay:false,
+               blurb:'9 tiles, 3 rounds, the closest decoys, no replays. A miss starts you over.' }
+};
+
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+function decoys(answer, pool, count, band) {
+  if (count <= 0) return [];
+  const others = pool.filter(c => c.id !== answer.id)
+                     .sort((x, y) => distance(answer, x) - distance(answer, y));
+  if (!others.length) return [];
+  if (others.length <= count) return others.slice(0, count);
+  let lo = Math.floor(others.length * band[0]);
+  let hi = Math.min(others.length, Math.ceil(others.length * band[1]));
+  lo = Math.max(0, Math.min(lo, hi - 1));
+  while (hi - lo < count) { if (lo > 0) lo--; else if (hi < others.length) hi++; else break; }
+  return shuffle(others.slice(lo, hi)).slice(0, count);
+}
+
+function makeRound(cfg, pool, forced) {
+  const answer = forced || pool[Math.random() * pool.length | 0];
+  const options = decoys(answer, pool, cfg.tiles - 1, cfg.band).concat([answer]);
+  return { answer, options: shuffle(options) };
+}
+
+const state = {
+  level: 'standard', rounds: [], index: 0, misses: 0,
+  lockedUntil: 0, solved: 0, totalMisses: 0, clean: 0, attempts: 0, roundMisses: 0
+};
+
+function pool() { return CATALOG; }
+
+function newSession(keepStats) {
+  const cfg = DIFF[state.level];
+  state.rounds = Array.from({ length: cfg.rounds }, () => makeRound(cfg, pool()));
+  state.index = 0; state.misses = 0; state.roundMisses = 0; state.lockedUntil = 0;
+  if (!keepStats) { state.solved = 0; state.totalMisses = 0; state.clean = 0; state.attempts = 0; }
+  drawAll();
+  playCurrent();
+}
+
+function playCurrent() {
+  const r = state.rounds[state.index];
+  if (!r) return;
+  if (!buffers.has(r.answer.id)) {
+    setPrompt('Generating the chant\u2026');
+    // Yield once so the message paints before the synth blocks the thread.
+    setTimeout(() => { play(r.answer, true); setPrompt('Who is chanting?'); }, 16);
+  } else {
+    play(r.answer, true);
+  }
+}
+
+// ----------------------------------------------------------------- view ---
+function tileCanvas(character, px) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cv = document.createElement('canvas');
+  cv.width = px * dpr; cv.height = px * dpr;
+  const g = cv.getContext('2d');
+  g.scale(dpr, dpr);
+  drawCreature(g, character.art, px);
+  return cv;
+}
+
+function drawAll() { drawGrid(); drawPips(); drawStats(); drawSegs(); }
+
+function drawGrid() {
+  const grid = document.getElementById('grid');
+  const r = state.rounds[state.index];
+  grid.innerHTML = '';
+  if (!r) return;
+  const n = r.options.length;
+  grid.dataset.cols = n === 3 ? 3 : (n <= 4 ? 2 : 3);
+  const px = n <= 4 ? 240 : 170;
+  for (const c of r.options) {
+    const b = document.createElement('button');
+    b.className = 'tile';
+    b.type = 'button';
+    b.setAttribute('aria-label', 'Unnamed creature');
+    b.appendChild(tileCanvas(c, px));
+    b.addEventListener('click', () => tap(c, b));
+    grid.appendChild(b);
+  }
+}
+
+function drawPips() {
+  const pips = document.getElementById('pips');
+  pips.innerHTML = '';
+  state.rounds.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'pip' + (i < state.index ? ' done' : i === state.index ? ' now' : '');
+    pips.appendChild(d);
+  });
+}
+
+function drawStats() {
+  document.getElementById('sSolved').textContent = state.solved;
+  document.getElementById('sMiss').textContent = state.totalMisses;
+  document.getElementById('sClean').textContent =
+    state.attempts ? Math.round(state.clean / state.attempts * 100) + '%' : '—';
+}
+
+function drawSegs() {
+  const segs = document.getElementById('segs');
+  if (!segs.children.length) {
+    for (const key of Object.keys(DIFF)) {
+      const b = document.createElement('button');
+      b.className = 'seg'; b.type = 'button';
+      b.textContent = key[0].toUpperCase() + key.slice(1);
+      b.addEventListener('click', () => { state.level = key; newSession(true); });
+      segs.appendChild(b);
+    }
+  }
+  [...segs.children].forEach((b, i) => {
+    const key = Object.keys(DIFF)[i];
+    b.setAttribute('aria-pressed', String(key === state.level));
+  });
+  document.getElementById('blurb').textContent = DIFF[state.level].blurb;
+  document.getElementById('replay').disabled = !DIFF[state.level].replay;
+}
+
+function setPrompt(text, mood) {
+  const p = document.getElementById('prompt');
+  p.textContent = text;
+  if (mood) p.dataset.state = mood; else delete p.dataset.state;
+}
+
+// ------------------------------------------------------------------ tap ---
+function tap(c, el) {
+  const now = Date.now();
+  if (now < state.lockedUntil) return;
+  const cfg = DIFF[state.level];
+  const r = state.rounds[state.index];
+  if (!r) return;
+
+  if (c.id === r.answer.id) {
+    el.classList.add('right');
+    state.attempts++;
+    if (state.roundMisses === 0) state.clean++;
+    state.roundMisses = 0;
+    state.index++;
+    if (state.index >= state.rounds.length) {
+      state.solved++;
+      stopAudio();
+      setPrompt('Silenced. That was ' + r.answer.name + '.', 'right');
+      drawPips(); drawStats();
+      setTimeout(() => { setPrompt('Who is chanting?'); newSession(true); }, 2200);
+    } else {
+      setPrompt('Correct — next one', 'right');
+      setTimeout(() => { setPrompt('Who is chanting?'); drawAll(); playCurrent(); }, 700);
+    }
+    return;
+  }
+
+  // wrong
+  el.classList.add('wrong');
+  state.misses++; state.totalMisses++; state.roundMisses++;
+  state.lockedUntil = now + cfg.lock;
+  setPrompt('Not that one. Listen again.', 'wrong');
+  if (navigator.vibrate) navigator.vibrate(60);
+
+  if (cfg.penalty === 'addRound') state.rounds.push(makeRound(cfg, pool()));
+  else if (cfg.penalty === 'restart') {
+    const keep = state.rounds[0].answer;
+    state.rounds = Array.from({ length: cfg.rounds }, (_, i) => makeRound(cfg, pool(), i === 0 ? keep : null));
+    state.index = 0;
+  }
+  const r2 = state.rounds[state.index];
+  if (r2) r2.options = shuffle(r2.options.slice());
+
+  const tick = () => {
+    const left = state.lockedUntil - Date.now();
+    const lock = document.getElementById('lock');
+    if (left > 0) { lock.textContent = 'locked ' + (left / 1000).toFixed(1) + 's'; requestAnimationFrame(tick); }
+    else { lock.textContent = ''; setPrompt('Who is chanting?'); drawAll(); playCurrent(); }
+  };
+  tick();
+}
+
+// --------------------------------------------------------------- roster ---
+function buildRoster() {
+  const host = document.getElementById('roster');
+  if (host.children.length) return;
+  for (const c of CATALOG) {
+    const b = document.createElement('button');
+    b.className = 'card'; b.type = 'button';
+    b.appendChild(tileCanvas(c, 160));
+    const name = document.createElement('b'); name.textContent = c.name;
+    const hz = document.createElement('small');
+    hz.textContent = Math.round(meta(c).pitch) + ' Hz · ' + c.voice.tempo.toFixed(1) + '/s';
+    b.append(name, hz);
+    b.addEventListener('click', () => {
+      [...host.children].forEach(x => x.classList.remove('playing'));
+      b.classList.add('playing');
+      play(c, false);
+    });
+    host.appendChild(b);
+  }
+}
+
+// ----------------------------------------------------------------- boot ---
+function showTab(which) {
+  const isPlay = which === 'play';
+  document.getElementById('playView').classList.toggle('hidden', !isPlay);
+  document.getElementById('rosterView').classList.toggle('hidden', isPlay);
+  document.getElementById('tabPlay').setAttribute('aria-selected', String(isPlay));
+  document.getElementById('tabRoster').setAttribute('aria-selected', String(!isPlay));
+  if (!isPlay) { stopAudio(); buildRoster(); }
+  else { drawAll(); playCurrent(); }
+}
+
+document.getElementById('start').addEventListener('click', async () => {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  audioCtx = new AC({ sampleRate: SAMPLE_RATE });
+  await audioCtx.resume();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.smoothingTimeConstant = 0.72;
+  analyser.connect(audioCtx.destination);
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  startMeter();
+  newSession(false);
+  warmCache();
+});
+
+document.getElementById('replay').addEventListener('click', () => {
+  if (Date.now() < state.lockedUntil) return;
+  playCurrent();
+});
+document.getElementById('skip').addEventListener('click', () => {
+  const r = state.rounds[state.index];
+  if (r) setPrompt('That was ' + r.answer.name + '.');
+  state.attempts++;
+  setTimeout(() => { setPrompt('Who is chanting?'); newSession(true); }, 1600);
+});
+document.getElementById('tabPlay').addEventListener('click', () => showTab('play'));
+document.getElementById('tabRoster').addEventListener('click', () => showTab('roster'));
+
+// A creature on the gate, so you see what you are getting into.
+(function gateArt() {
+  const cv = document.getElementById('gateArt');
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = 150 * dpr; cv.height = 150 * dpr;
+  const g = cv.getContext('2d'); g.scale(dpr, dpr);
+  drawCreature(g, CATALOG[0].art, 150);
+})();
+
+</script>
