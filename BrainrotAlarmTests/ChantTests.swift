@@ -92,7 +92,7 @@ final class ChantSynthTests: XCTestCase {
         XCTAssertFalse(samples.isEmpty)
         XCTAssertTrue(samples.allSatisfy { $0.isFinite }, "no NaN or infinity may reach the buffer")
 
-        let peak = samples.map(abs).max() ?? 0
+        let peak = samples.map { abs($0) }.max() ?? 0
         XCTAssertEqual(peak, 0.89, accuracy: 0.02, "output is normalised to a fixed headroom")
 
         let rms = (samples.reduce(0) { $0 + Double($1 * $1) } / Double(samples.count)).squareRoot()
@@ -105,7 +105,7 @@ final class ChantSynthTests: XCTestCase {
         // sounds like a click, not a voice.
         for character in BrainrotCatalog.all {
             let samples = ChantSynth.render(chant: character.chant, voice: character.voice)
-            let peak = Double(samples.map(abs).max() ?? 0)
+            let peak = Double(samples.map { abs($0) }.max() ?? 0)
             let rms = (samples.reduce(0) { $0 + Double($1 * $1) } / Double(samples.count)).squareRoot()
             let crest = 20 * log10(peak / max(rms, 1e-9))
             XCTAssertLessThan(crest, 22, "\(character.id) is too peaky (\(crest) dB)")

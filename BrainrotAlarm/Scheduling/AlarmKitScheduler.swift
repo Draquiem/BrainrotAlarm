@@ -97,7 +97,7 @@ actor AlarmKitScheduler: AlarmScheduling {
         let time = Alarm.Schedule.Relative.Time(hour: alarm.hour, minute: alarm.minute)
         let recurrence: Alarm.Schedule.Relative.Recurrence = alarm.repeatDays.isEmpty
             ? .never
-            : .weekly(alarm.repeatDays.sorted().compactMap(Locale.Weekday.init))
+            : .weekly(alarm.repeatDays.sorted().compactMap { Locale.Weekday($0) })
         return .relative(.init(time: time, repeats: recurrence))
     }
 }

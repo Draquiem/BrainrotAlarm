@@ -16,15 +16,17 @@ enum ChantParser {
     static func parse(_ chant: String) -> ChantPhrase {
         let words = chant
             .split(whereSeparator: { $0 == " " || $0 == "\u{00A0}" })
-            .map(parseWord)
+            .map { parseWord(String($0)) }
             .filter { !$0.isEmpty }
         return ChantPhrase(words: words)
     }
 
-    private static func parseWord<S: StringProtocol>(_ word: S) -> [Syllable] {
-        // The literal needs an explicit type: on a generic StringProtocol, Swift
-        // cannot choose between the Character and the Collection overloads of split.
-        let tokens = word.split(separator: "-" as Character).map(String.init)
+    // Takes a concrete String rather than `some StringProtocol` deliberately. With a
+    // generic receiver the SubSequence type stays open, and `String.init` has enough
+    // overloads that Swift cannot then pick one — which it reports, confusingly, as
+    // an ambiguous `split`.
+    private static func parseWord(_ word: String) -> [Syllable] {
+        let tokens: [String] = word.split(separator: "-" as Character).map { String($0) }
         var syllables = tokens.compactMap(parseSyllable)
         guard !syllables.isEmpty else { return [] }
 
