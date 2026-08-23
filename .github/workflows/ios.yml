@@ -72,6 +72,28 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee test.log
 
+      - name: Launch it in the simulator and screenshot
+        if: always()
+        run: |
+          set -x
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -name "BrainrotAlarm.app" -path "*Debug-iphonesimulator*" | head -1)
+          echo "app bundle: $APP"
+          xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b || true
+          xcrun simctl install "${{ steps.sim.outputs.udid }}" "$APP"
+          xcrun simctl launch "${{ steps.sim.outputs.udid }}" com.oudomsak.brainrotalarm || true
+          mkdir -p /tmp/brainrot-shots
+          for i in 1 2 3; do sleep 3; done
+          xcrun simctl io "${{ steps.sim.outputs.udid }}" screenshot /tmp/brainrot-shots/app-alarms-tab.png || true
+          ls -la /tmp/brainrot-shots || true
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: /tmp/brainrot-shots
+          if-no-files-found: warn
+
       - name: Summarise problems
         if: always()
         run: |
