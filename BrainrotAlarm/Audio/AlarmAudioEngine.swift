@@ -81,7 +81,10 @@ final class AlarmAudioEngine: ObservableObject {
 
         player.stop()
         player.volume = startVolume
-        player.scheduleBuffer(buffer, at: nil, options: .loops)
+        // `completionHandler: nil` picks the non-async overload on purpose. Swift
+        // imports the completion-handler API as `async` too, and awaiting it would
+        // suspend until playback *finishes* — which, for a looping alarm, is never.
+        player.scheduleBuffer(buffer, at: nil, options: .loops, completionHandler: nil)
         player.play()
         isRinging = true
         nowPlaying = character
@@ -96,7 +99,7 @@ final class AlarmAudioEngine: ObservableObject {
         guard let buffer = await buffer(for: character, trailingSilence: 0.1) else { return }
         player.stop()
         player.volume = 1
-        player.scheduleBuffer(buffer, at: nil, options: [])
+        player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
         player.play()
         nowPlaying = character
     }
@@ -106,7 +109,7 @@ final class AlarmAudioEngine: ObservableObject {
         guard let character = nowPlaying, isRinging else { return }
         guard let buffer = await buffer(for: character, trailingSilence: 0.45) else { return }
         player.stop()
-        player.scheduleBuffer(buffer, at: nil, options: .loops)
+        player.scheduleBuffer(buffer, at: nil, options: .loops, completionHandler: nil)
         player.play()
     }
 
