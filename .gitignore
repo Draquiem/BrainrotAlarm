@@ -5,3 +5,10 @@ xcuserdata/
 .DS_Store
 __pycache__/
 *.pyc
+
+# Real assets are yours, not the repo's. The folders are created on demand by
+# Tools/prepare-assets.py; do not put placeholder files in them — Xcode flattens
+# bundle resources into the app root, so two same-named files in different
+# asset folders collide at build time.
+BrainrotAlarm/Assets/audio/*
+BrainrotAlarm/Assets/images/*

@@ -100,14 +100,15 @@ enum AssetLibrary {
 
     // MARK: - Lookup
 
-    /// Resources land in the bundle root, but a folder reference keeps its
-    /// subdirectory — so check both.
+    /// Xcode flattens loose resources into the bundle root, so that is the case
+    /// that actually fires. The subdirectory lookup is kept for the folder-
+    /// reference layout, where the path survives.
     private static func url(for id: String, extensions: [String], subdirectory: String) -> URL? {
         for ext in extensions {
-            if let url = Bundle.main.url(forResource: id, withExtension: ext, subdirectory: subdirectory) {
+            if let url = Bundle.main.url(forResource: id, withExtension: ext) {
                 return url
             }
-            if let url = Bundle.main.url(forResource: id, withExtension: ext) {
+            if let url = Bundle.main.url(forResource: id, withExtension: ext, subdirectory: subdirectory) {
                 return url
             }
         }

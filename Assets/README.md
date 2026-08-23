@@ -30,6 +30,12 @@ BrainrotAlarm/Assets/images/<id>.png
 Those folders are inside the app's synchronized group, so Xcode adds new files
 to the bundle without you touching the project.
 
+One trap worth knowing: Xcode flattens loose resources into the bundle root.
+Two files with the same name in different asset folders therefore collide and
+fail the build with *"Multiple commands produce ..."*. Character assets never
+collide because ids are unique and the extensions differ — but do not leave
+`.gitkeep`, `README.md` or any other same-named placeholder in both folders.
+
 ## The 24 ids
 
 ```
