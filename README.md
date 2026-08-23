@@ -21,6 +21,10 @@ grid locks for a couple of seconds while the chant keeps going.
         └──────────────────┘
 ```
 
+[![build](https://github.com/Draquiem/BrainrotAlarm/actions/workflows/ios.yml/badge.svg)](https://github.com/Draquiem/BrainrotAlarm/actions/workflows/ios.yml)
+
+Builds and runs its tests on every push against Xcode 26.6 / Swift 6.3.
+
 ## Getting it on a phone
 
 See [SIDELOAD.md](SIDELOAD.md) — about 20 minutes on any Mac, with a free Apple ID.
@@ -132,16 +136,16 @@ app switcher, and the chain nags for a few minutes rather than indefinitely.
 
 **AlarmKit (iOS 26+, opt-in).** `AlarmKitScheduler.swift` targets the real alarm
 API — breaks through silent mode and Focus, survives termination, no 30-second
-cap. It is behind the `BRAINROT_ALARMKIT` compilation condition rather than an
-availability check, because **it was written without an iOS 26 SDK to compile
-against and the exact spelling of those types has not been verified.** Check it in
-Xcode first, then add the flag under Build Settings → Swift Compiler – Custom
-Flags → Active Compilation Conditions. Until you do, the app builds and runs
-entirely on the notification path.
+cap. It is behind the `BRAINROT_ALARMKIT` compilation condition because it was written
+without an iOS 26 SDK to hand. CI now type-checks it against that SDK on every
+push and it compiles clean, but it has not been exercised on a device — so it
+stays opt-in. Enable it under Build Settings → Swift Compiler – Custom Flags →
+Active Compilation Conditions. Until you do, the app runs entirely on the
+notification path.
 
-The same reasoning applies to the whole project: it has been statically checked
-and its logic verified, but **it has never been compiled.** Expect to fix a few
-things on first build.
+**Verified since:** CI compiles the AlarmKit path against the real iOS 26 SDK on
+every push, and it builds clean — the API spellings were right. It stays behind
+the flag because it has been type-checked but not yet run on a device.
 
 ## Layout
 
@@ -180,7 +184,7 @@ The ones worth knowing about:
 
 ## Known gaps
 
-- Not compiled. See above.
+- The AlarmKit path type-checks but has not been run on a device.
 - The roster is 24 characters; the meme family is larger.
 - Stats are local only, no sync.
 - Notification sounds are written to `Library/Sounds` at ~2.5 MB per scheduled

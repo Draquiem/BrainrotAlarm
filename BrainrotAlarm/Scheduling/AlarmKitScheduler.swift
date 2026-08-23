@@ -84,7 +84,7 @@ actor AlarmKitScheduler: AlarmScheduling {
                 sound: .named(soundName))
 
             do {
-                try await manager.schedule(id: alarm.id, configuration: configuration)
+                _ = try await manager.schedule(id: alarm.id, configuration: configuration)
             } catch {
                 print("[alarmkit] could not schedule \(alarm.id): \(error)")
             }
