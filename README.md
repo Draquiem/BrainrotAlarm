@@ -60,7 +60,21 @@ aplay preview_all_voices.wav     # all 24 characters, 66 seconds
 aplay preview_alarm_loop.wav     # what one alarm actually sounds like
 ```
 
-## There are no audio files and no images
+## Swapping in real assets
+
+Every character has a synthesised chant and a drawn portrait, and either can be
+replaced by dropping a file in. See [Assets/README.md](Assets/README.md) — the
+short version is:
+
+```
+cp whatever-you-have.mp3  Assets/raw/audio/
+python3 Tools/prepare-assets.py     # matches by name, converts, normalises
+python3 Tools/check-assets.py       # coverage + spec violations
+```
+
+Characters with no asset keep falling back, so a partial set works fine.
+
+## Why there are no audio files or images to begin with
 
 Both halves of the puzzle are generated at runtime.
 
@@ -192,6 +206,8 @@ The ones worth knowing about:
 
 - The AlarmKit path type-checks but has not been run on a device.
 - The roster is 24 characters; the meme family is larger.
+- Three of the generated portraits read poorly at tile size — `cappuccino` and
+  `trictrac` are too low-contrast, and `piccione` is swamped by its prop.
 - Stats are local only, no sync.
 - Notification sounds are written to `Library/Sounds` at ~2.5 MB per scheduled
   character and pruned when no longer needed, so a handful of alarms costs a few

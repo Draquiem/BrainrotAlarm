@@ -11,8 +11,39 @@ function voiceOf(c) {
   return v;
 }
 
-function bufferFor(c) {
+function base64ToBytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+}
+
+// Appends the gap the loop needs, whatever the source's rate or channel count.
+function withGap(decoded, seconds) {
+  const gap = Math.floor(seconds * decoded.sampleRate);
+  const buf = audioCtx.createBuffer(decoded.numberOfChannels,
+                                    decoded.length + gap, decoded.sampleRate);
+  for (let ch = 0; ch < decoded.numberOfChannels; ch++) {
+    buf.getChannelData(ch).set(decoded.getChannelData(ch));
+  }
+  return buf;
+}
+
+// A real recording wins over the synthesiser; anything that fails to decode
+// quietly falls back rather than leaving a round silent.
+async function ensureBuffer(c) {
   if (buffers.has(c.id)) return buffers.get(c.id);
+  const asset = ASSETS[c.id];
+  if (asset && asset.audio) {
+    try {
+      const decoded = await audioCtx.decodeAudioData(base64ToBytes(asset.audio));
+      const buf = withGap(decoded, 0.45);
+      buffers.set(c.id, buf);
+      return buf;
+    } catch (e) {
+      console.warn('could not decode bundled audio for ' + c.id + ', synthesising instead', e);
+    }
+  }
   const samples = render(c.chant, voiceOf(c), 0x5EED);
   const gap = Math.floor(0.45 * SAMPLE_RATE);
   const buf = audioCtx.createBuffer(1, samples.length + gap, SAMPLE_RATE);
@@ -28,7 +59,7 @@ function warmCache() {
   const queue = CATALOG.slice();
   const idle = window.requestIdleCallback || (fn => setTimeout(() => fn({ timeRemaining: () => 8 }), 32));
   const step = deadline => {
-    while (queue.length && deadline.timeRemaining() > 4) bufferFor(queue.shift());
+    while (queue.length && deadline.timeRemaining() > 4) ensureBuffer(queue.shift());
     if (queue.length) idle(step);
   };
   idle(step);
@@ -38,11 +69,15 @@ function stopAudio() {
   if (current) { try { current.stop(); } catch (e) {} current.disconnect(); current = null; }
 }
 
-function play(c, loop) {
+let playToken = 0;
+async function play(c, loop) {
   if (!audioCtx) return;
+  const token = ++playToken;
+  const buffer = await ensureBuffer(c);
+  if (token !== playToken) return;   // a newer play() overtook this one
   stopAudio();
   const src = audioCtx.createBufferSource();
-  src.buffer = bufferFor(c);
+  src.buffer = buffer;
   src.loop = !!loop;
   src.connect(analyser);
   src.start();
@@ -165,22 +200,41 @@ function playCurrent() {
   const r = state.rounds[state.index];
   if (!r) return;
   if (!buffers.has(r.answer.id)) {
-    setPrompt('Generating the chant\u2026');
-    // Yield once so the message paints before the synth blocks the thread.
-    setTimeout(() => { play(r.answer, true); setPrompt('Who is chanting?'); }, 16);
+    setPrompt('Loading the chant\u2026');
+    setTimeout(() => { play(r.answer, true).then(() => setPrompt('Who is chanting?')); }, 16);
   } else {
     play(r.answer, true);
   }
 }
 
 // ----------------------------------------------------------------- view ---
+const IMAGES = new Map();
+
+function preloadImages() {
+  const entries = Object.entries(ASSETS).filter(([, a]) => a.image);
+  return Promise.all(entries.map(([id, a]) => new Promise(resolve => {
+    const im = new Image();
+    im.onload = () => { IMAGES.set(id, im); resolve(); };
+    im.onerror = () => resolve();      // fall back to the drawing
+    im.src = a.image;
+  })));
+}
+
 function tileCanvas(character, px) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const cv = document.createElement('canvas');
   cv.width = px * dpr; cv.height = px * dpr;
   const g = cv.getContext('2d');
   g.scale(dpr, dpr);
-  drawCreature(g, character.art, px);
+  const art = IMAGES.get(character.id);
+  if (art) {
+    // Cover-fit, so a non-square source is cropped rather than squashed.
+    const s = Math.max(px / art.width, px / art.height);
+    const w = art.width * s, h = art.height * s;
+    g.drawImage(art, (px - w) / 2, (px - h) / 2, w, h);
+  } else {
+    drawCreature(g, character.art, px);
+  }
   return cv;
 }
 
@@ -342,6 +396,7 @@ document.getElementById('start').addEventListener('click', async () => {
   document.getElementById('gate').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   startMeter();
+  await preloadImages();
   newSession(false);
   warmCache();
 });
@@ -365,5 +420,6 @@ document.getElementById('tabRoster').addEventListener('click', () => showTab('ro
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = 150 * dpr; cv.height = 150 * dpr;
   const g = cv.getContext('2d'); g.scale(dpr, dpr);
-  drawCreature(g, CATALOG[0].art, 150);
+  const art = IMAGES.get(CATALOG[0].id);
+  if (art) g.drawImage(art, 0, 0, 150, 150); else drawCreature(g, CATALOG[0].art, 150);
 })();

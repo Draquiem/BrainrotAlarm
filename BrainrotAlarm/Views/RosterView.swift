@@ -79,7 +79,7 @@ struct CharacterDetailView: View {
             Theme.background.ignoresSafeArea()
             ScrollView {
                 VStack(spacing: 16) {
-                    CreatureView(recipe: character.art)
+                    CreatureView(recipe: character.art, assetID: character.id)
                         .frame(maxWidth: 220)
                         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
 

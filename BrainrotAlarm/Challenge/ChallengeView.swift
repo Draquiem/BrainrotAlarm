@@ -170,7 +170,7 @@ struct ChallengeView: View {
         VStack(spacing: 20) {
             Spacer()
             if let character = session.rounds.last?.answer {
-                CreatureView(recipe: character.art)
+                CreatureView(recipe: character.art, assetID: character.id)
                     .frame(width: 190, height: 190)
                     .clipShape(RoundedRectangle(cornerRadius: 28))
                 Text(character.name)

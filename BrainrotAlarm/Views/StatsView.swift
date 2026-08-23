@@ -21,7 +21,7 @@ struct StatsView: View {
                         if let nemesis {
                             Panel(title: "Your nemesis") {
                                 HStack(spacing: 14) {
-                                    CreatureView(recipe: nemesis.character.art)
+                                    CreatureView(recipe: nemesis.character.art, assetID: nemesis.character.id)
                                         .frame(width: 62, height: 62)
                                         .clipShape(RoundedRectangle(cornerRadius: 14))
                                     VStack(alignment: .leading, spacing: 3) {
@@ -114,7 +114,7 @@ private struct WakeRow: View {
     var body: some View {
         HStack(spacing: 12) {
             if let character = BrainrotCatalog.character(id: record.characterID) {
-                CreatureView(recipe: character.art)
+                CreatureView(recipe: character.art, assetID: character.id)
                     .frame(width: 38, height: 38)
                     .clipShape(RoundedRectangle(cornerRadius: 9))
                 VStack(alignment: .leading, spacing: 2) {

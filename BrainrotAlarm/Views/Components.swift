@@ -19,7 +19,7 @@ struct CreatureTile: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
-                CreatureView(recipe: character.art)
+                CreatureView(recipe: character.art, assetID: character.id)
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)

@@ -37,6 +37,11 @@ enum ChantSoundLibrary {
     /// Returns the file name to hand to `UNNotificationSound`, or nil on failure.
     @discardableResult
     static func ensureSoundFile(for character: BrainrotCharacter) -> String? {
+        // A bundled recording can be a notification sound directly, provided it is
+        // uncompressed and under the 30-second cap. AssetLibrary checks both.
+        if let bundled = AssetLibrary.notificationSoundName(for: character.id) {
+            return bundled
+        }
         guard let directory = soundsDirectory else { return nil }
         let name = soundFileName(for: character)
         let url = directory.appendingPathComponent(name)

@@ -141,6 +141,13 @@ final class AlarmAudioEngine: ObservableObject {
         let key = "\(character.id)-\(trailingSilence)"
         if let cached = cache[key] { return cached }
 
+        // A hand-made recording wins over the synthesiser when one is present.
+        if let recorded = AssetLibrary.audioBuffer(for: character.id,
+                                                   trailingSilence: trailingSilence) {
+            cache[key] = recorded
+            return recorded
+        }
+
         let rate = sampleRate
         let chant = character.chant
         let voice = character.voice

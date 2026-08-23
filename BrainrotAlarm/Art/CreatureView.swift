@@ -6,9 +6,25 @@ import SwiftUI
 /// same code serves a 44 pt list thumbnail and a full-screen answer tile.
 struct CreatureView: View {
     let recipe: CreatureRecipe
+    /// Character id. When artwork for it has been dropped into `Assets/images/`,
+    /// that image is used and the procedural drawing is skipped entirely.
+    var assetID: String?
     var showsBackdrop: Bool = true
 
     var body: some View {
+        if let assetID, let artwork = AssetLibrary.image(for: assetID) {
+            Image(uiImage: artwork)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .aspectRatio(1, contentMode: .fit)
+                .clipped()
+                .accessibilityHidden(true)
+        } else {
+            drawn
+        }
+    }
+
+    private var drawn: some View {
         GeometryReader { geometry in
             let side = min(geometry.size.width, geometry.size.height)
             ZStack {
